@@ -96,7 +96,7 @@ tr:last-child td { border-bottom: 0; }
 .login-form-wrap { display: grid; place-items: center; padding: 40px; }
 .login-form { width: min(430px, 100%); }
 .login-form h2 { text-align: center; font-size: 30px; margin: 0 0 8px; }
-.login-form > p { text-align:center; var(--muted); margin: 0 0 24px; line-height: 1.45; }
+.login-form > p { text-align:center; color : var(--muted); margin: 0 0 24px; line-height: 1.45; }
 .role-tabs { display: grid; grid-template-columns: 1fr 1fr; background: #e9e7dd; border-radius: 8px; padding: 3px; margin-bottom: 22px; }
 .role-tab { border: 0; background: transparent; padding: 10px; border-radius: 6px; font-weight: 700; color: #666; }
 .role-tab.active { background: white; box-shadow: var(--shadow); color: #3b4147; }
