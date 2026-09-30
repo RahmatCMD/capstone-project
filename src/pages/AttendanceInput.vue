@@ -112,8 +112,8 @@ function show(message) {
           <h1>Input Absensi</h1>
 
           <p>
-            Kelas 5B · Senin, 22 September 2026 ·
-            Mapel: Tematik, Jam 1–2
+            Kelas 4 · Senin, 22 September 2026 ·
+            Mapel: Olahraga dan Keterampilan , Jam 1–2
           </p>
 
         </div>
