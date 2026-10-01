@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import logo from '../assets/logo-sekolah.png'
 
 const props = defineProps({ role: { type: String, default: 'guru' } })
 const route = useRoute()
@@ -11,8 +12,8 @@ const menus = computed(() => props.role === 'guru'
       { label: 'Dashboard', to: '/guru/dashboard' },
       { label: 'Input Absensi', to: '/guru/absensi' },
       { label: 'Riwayat & Rekap', to: '/guru/riwayat' },
-      { label: 'Nilai & Tugas', to: '/guru/dashboard' },
-      { label: 'Kelas Saya', to: '/guru/dashboard' }
+      { label: 'Nilai & Tugas', to: '/guru/null' },
+      { label: 'Kelas Saya', to: '/guru/kelas-saya' }
     ]
   : [
       { label: 'Dashboard', to: '/orang-tua/dashboard' },
@@ -30,7 +31,9 @@ function logout() {
 <template>
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">A</div>
+      <div class="brand-mark">
+        <img :src="logo" alt="Logo Sekolah" />
+      </div>
       <div>
         <div>Absen Sekolah</div>
         <span class="brand-sub">Sistem Absensi & Pemantauan Belajar</span>
@@ -57,7 +60,7 @@ function logout() {
     <button class="nav-link" style="border:0;background:transparent;text-align:left;width:100%;" @click="logout">• Keluar</button>
 
     <div class="user-card">
-      <div class="avatar">{{ props.role === 'guru' ? 'RW' : 'SH' }}</div>
+      <div class="avatar">{{ props.role === 'guru' ? 'MS' : 'SH' }}</div>
       <div>
         <div class="user-name">{{ props.role === 'guru' ? 'Manto R Simatupang.' : 'Siti Handayani' }}</div>
         <div class="user-role">{{ props.role === 'guru' ? 'Wali Kelas 4' : 'Orang Tua' }}</div>

@@ -1,27 +1,3 @@
-<script setup>
-defineProps({
-  role: { type: String, required: true }, // 'guru' | 'ortu'
-  userName: { type: String, required: true },
-  userSubtitle: { type: String, required: true },
-  userInitials: { type: String, required: true }
-})
-
-const guruMenu = [
-  { label: 'Dashboard', to: '/guru/dashboard' },
-  { label: 'Input Absensi', to: '/guru/input-absensi' },
-  { label: 'Riwayat & Rekap', to: '/guru/riwayat-rekap' },
-  { label: 'Nilai & Tugas', to: null },
-  { label: 'Kelas Saya', to: null }
-]
-
-const ortuMenu = [
-  { label: 'Dashboard', to: '/ortu/dashboard' },
-  { label: 'Absensi Anak', to: '/ortu/absensi-anak' },
-  { label: 'Kemajuan Belajar', to: null },
-  { label: 'Pesan dari Guru', to: null }
-]
-</script>
-
 <template>
   <aside class="sidebar">
     <div class="brand">
@@ -60,8 +36,8 @@ const ortuMenu = [
 <style scoped>
 .sidebar {
   width: 240px;
-  background: var(--navy);
-  color: #fff;
+  background: #2196F3 !important;
+  color: #ffffff;
   padding: 24px 16px;
   flex-shrink: 0;
   display: flex;
@@ -75,10 +51,23 @@ const ortuMenu = [
   margin-bottom: 36px;
   padding-left: 8px;
 }
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
 
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
 .brand-badge {
-  background: var(--amber);
-  color: #fff;
+  background: #F59E0B;
+  color: #ffffff;
   font-weight: bold;
   width: 32px;
   height: 32px;
@@ -89,17 +78,26 @@ const ortuMenu = [
   flex-shrink: 0;
 }
 
-.brand-title { font-weight: 700; font-size: 18px; letter-spacing: -0.3px; }
+.brand-title {
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  color: #ffffff;
+}
 
-nav { flex: 1; }
+nav {
+  flex: 1;
+}
 
-.menu-group { margin-bottom: 28px; }
+.menu-group {
+  margin-bottom: 28px;
+}
 
 .group-title {
   display: block;
   font-size: 11px;
   font-weight: 600;
-  color: var(--navy-text-muted);
+  color: #B8C7DA;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
   padding-left: 8px;
@@ -108,21 +106,30 @@ nav { flex: 1; }
 .nav-item {
   display: block;
   padding: 10px 12px;
-  color: var(--navy-text);
+  color: #E2EAF4;
   text-decoration: none;
   border-radius: 6px;
   font-size: 14px;
   margin-bottom: 4px;
 }
-.nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.nav-item.active { background: var(--navy-active); color: #fff; font-weight: 600; }
+
+.nav-item:hover {
+  background: #294D75;
+  color: #ffffff;
+}
+
+.nav-item.active {
+  background: #365D87;
+  color: #ffffff;
+  font-weight: 600;
+}
 
 .user-card {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 8px 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
   margin-top: 12px;
 }
 
@@ -130,8 +137,8 @@ nav { flex: 1; }
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--navy-active);
-  color: #fff;
+  background: #365D87;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -140,10 +147,20 @@ nav { flex: 1; }
   flex-shrink: 0;
 }
 
-.user-name { font-size: 13px; font-weight: 600; color: #fff; }
-.user-subtitle { font-size: 11px; color: var(--navy-text-muted); }
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.user-subtitle {
+  font-size: 11px;
+  color: #B8C7DA;
+}
 
 @media (max-width: 860px) {
-  .sidebar { display: none; }
+  .sidebar {
+    display: none;
+  }
 }
 </style>
