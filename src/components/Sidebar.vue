@@ -1,11 +1,16 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logo from '../assets/logo-sekolah.png'
 
 const props = defineProps({ role: { type: String, default: 'guru' } })
 const route = useRoute()
 const router = useRouter()
+const menuTerbuka = ref(false)
+
+function tutupMenu() {
+  menuTerbuka.value = false
+}
 
 const menus = computed(() => props.role === 'guru'
   ? [
@@ -29,7 +34,24 @@ function logout() {
 </script>
 
 <template>
-  <aside class="sidebar">
+  
+<header class="mobile-header">
+  <div class="mobile-brand">
+    <img :src="logo" alt="Logo Sekolah" />
+    <span>Absen Sekolah</span>
+  </div>
+
+  <button
+    class="menu-toggle"
+    type="button"
+    @click="menuTerbuka = !menuTerbuka"
+  >
+    {{ menuTerbuka ? '✕' : '☰' }}
+  </button>
+</header>
+
+  <aside class="sidebar"
+        :class="{ 'mobile-open' : menuTerbuka}">
     <div class="brand">
       <div class="brand-mark">
         <img :src="logo" alt="Logo Sekolah" />
@@ -48,6 +70,7 @@ function logout() {
         :to="item.to"
         class="nav-link"
         :class="{ active: route.path === item.to }"
+        @click="tutupMenu"
       >• {{ item.label }}</router-link>
     </nav>
 

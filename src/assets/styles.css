@@ -161,27 +161,106 @@ tr:last-child td { border-bottom: 0; }
 .toast { position: fixed; right: 24px; bottom: 24px; background: #263545; color: white; padding: 12px 15px; border-radius: 9px; box-shadow: 0 8px 30px rgba(0,0,0,.18); z-index: 20; }
 .empty { text-align: center; color: var(--muted); padding: 28px; }
 
-@media (max-width: 1000px) {
-  .sidebar { width: 215px; flex-basis: 215px; }
-  .main { padding: 22px; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .login-page { grid-template-columns: 1fr; }
-  .login-hero { min-height: 330px; }
-  .login-hero h1 { margin-top: 35px; font-size: 32px; }
-  .quote { margin-top: 30px; }
+
+
+/* Header hanya muncul di HP */
+.mobile-header {
+  display: none;
 }
+
 @media (max-width: 720px) {
-  .app-shell { display: block; }
-  .sidebar { width: 100%; min-height: auto; padding: 14px; }
-  .nav-title, .user-card { display: none; }
-  .brand { margin-bottom: 10px; }
-  .sidebar nav { display: flex; overflow-x: auto; gap: 4px; }
-  .nav-link { white-space: nowrap; }
-  .main { padding: 16px; }
-  .stats { grid-template-columns: 1fr; }
-  .page-head { flex-direction: column; }
-  .calendar { min-width: 620px; }
-  .calendar-wrap { overflow-x: auto; }
-  .login-hero { padding: 35px 25px; }
-  .login-form-wrap { padding: 25px; }
+  .mobile-header {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    padding: 0 16px;
+    align-items: center;
+    justify-content: space-between;
+    background: #2196F3;
+    color: white;
+    z-index: 1002;
+    box-sizing: border-box;
+  }
+
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+  }
+
+  .mobile-brand img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+  }
+
+  .menu-toggle {
+    border: none;
+    background: transparent;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+  }
+
+  .sidebar {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    width: 100%;
+    min-height: 0;
+    max-height: calc(100vh - 60px);
+    padding: 16px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    z-index: 1001;
+  }
+
+  .sidebar.mobile-open {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar .brand {
+    display: none;
+  }
+
+  .sidebar nav {
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .sidebar .nav-title,
+  .sidebar .user-card {
+    display: flex;
+  }
+
+  .main {
+    width: 100%;
+    min-width: 0;
+    padding: 76px 16px 20px;
+    box-sizing: border-box;
+  }
+}
+
+/* Desktop dan laptop */
+@media (min-width: 721px) {
+  .mobile-header {
+    display: none;
+  }
+
+  .sidebar {
+    display: flex;
+    position: relative;
+    width: 250px;
+    flex: 0 0 250px;
+    min-height: 100vh;
+  }
 }
