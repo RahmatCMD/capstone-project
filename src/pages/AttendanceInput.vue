@@ -309,7 +309,7 @@ function show(message) {
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background: #f5f6fa;
+  background: #f4f5f0;
   color: #263247;
   box-sizing: border-box;
 }
