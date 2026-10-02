@@ -250,14 +250,10 @@ tr:last-child td { border-bottom: 0; }
     padding: 16px 16px 20px;
     box-sizing: border-box;
   }
-  .html {
-    overscroll-behavior-y: none;
-  }
-  .body{
-    overscroll-behavior-y: none;
-  }
 }
-
+html,body{
+    overscroll-behavior-y: none;
+  }
 /* Desktop dan laptop */
 @media (min-width: 721px) {
   .mobile-header {
