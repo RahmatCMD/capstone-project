@@ -489,7 +489,7 @@ function exportData() {
 
 .rekap-header h1 {
   margin: 0 0 10px;
-  font-size: 28px;
+  font-size: 25px;
   font-weight: 700;
   color: #263247;
 }
