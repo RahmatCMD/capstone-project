@@ -18,7 +18,7 @@
 
       <div class="menu-group">
         <span class="group-title">LAINNYA</span>
-        <router-link :to="`/${role}/profil`" class="nav-item" active-class="active">Profil & Pengaturan</router-link>
+        <router-link :to="`/${role}/profil`" class="nav-item" active-class="active">Profil & Pengumuman</router-link>
         <router-link to="/" class="nav-item">Keluar</router-link>
       </div>
     </nav>

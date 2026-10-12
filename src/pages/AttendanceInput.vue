@@ -1,28 +1,46 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import Sidebar from '../components/Sidebar.vue'
+
+const API_URL = 'http://localhost/absensi-api/siswa.php'
+const ABSEN_API_URL = 'http://localhost/absensi-api/absen.php'
 
 const toast = ref('')
 const filter = ref('Semua')
+const loading = ref(false)
+const errorMessage = ref('')
 
-const students = ref([
-  { no: 1, name: 'Aditya Rahman', nisn: '0091234561', note: '-' },
-  { no: 2, name: 'Bima Saputra', nisn: '0091234562', note: '-' },
-  { no: 3, name: 'Citra Ayu Lestari', nisn: '0091234563', note: '-' },
-  { no: 4, name: 'Dimas Prakoso', nisn: '0091234564', note: '-' },
-  { no: 5, name: 'Nadia Putri', nisn: '0091234565', note : '-'},
-  { no: 6, name: 'Fajar Nugroho', nisn: '0091234566', note :'-' },
-  { no: 7, name: 'Gita Ramadhani', nisn: '0091234567', note: '-' },
-  { no: 8, name: 'Hafiz Maulana', nisn: '0091234568', note: '-' },
-  { no: 9, name: 'Indah Permatasari', nisn: '0091234569', note: '-' },
-  { no: 10, name: 'Joko Prasetyo', nisn: '0091234570', note: '-' }
-])
+const students = ref([])
 
 const statuses = ['Hadir', 'Sakit', 'Izin', 'Alpha']
 
-/*
- * Catatan default berdasarkan status
- */
+function getToday() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+const today = ref(getToday())
+
+function formatTanggalIndonesia(dateString) {
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString(
+    'id-ID',
+    {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }
+  )
+}
+
+const tanggalHariIni = computed(() =>
+  formatTanggalIndonesia(today.value)
+)
+
 const defaultNotes = {
   Hadir: '-',
   Sakit: 'Siswa sedang sakit',
@@ -30,36 +48,114 @@ const defaultNotes = {
   Alpha: 'Tanpa keterangan'
 }
 
+// Mengambil siswa dari MySQL melalui API PHP
+
+async function getStudents() {
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    // Ambil daftar siswa dari MySQL
+    const responseSiswa = await fetch(API_URL)
+
+    if (!responseSiswa.ok) {
+      throw new Error(`Gagal mengambil siswa: HTTP ${responseSiswa.status}`)
+    }
+
+    const resultSiswa = await responseSiswa.json()
+
+    if (!resultSiswa.success || !Array.isArray(resultSiswa.data)) {
+      throw new Error(resultSiswa.message || 'Data siswa tidak valid.')
+    }
+
+    // Ambil absensi dari MySQL berdasarkan tanggal terpilih
+    const urlAbsensi =
+      `${ABSEN_API_URL}?tanggal=${encodeURIComponent(today.value)}`
+
+    const responseAbsensi = await fetch(urlAbsensi)
+
+    if (!responseAbsensi.ok) {
+      throw new Error(`Gagal mengambil absensi: HTTP ${responseAbsensi.status}`)
+    }
+
+    const resultAbsensi = await responseAbsensi.json()
+
+    if (!resultAbsensi.success || !Array.isArray(resultAbsensi.data)) {
+      throw new Error(resultAbsensi.message || 'Data absensi tidak valid.')
+    }
+
+    const dataAbsensi = resultAbsensi.data
+
+    // Gabungkan data siswa dan absensi berdasarkan NISN
+    students.value = resultSiswa.data.map((item, index) => {
+      const absensiSiswa = dataAbsensi.find(
+        data => String(data.nisn) === String(item.nisn)
+      )
+
+      return {
+        no: index + 1,
+        id_siswa: item.id_siswa,
+        name: item.nama_siswa,
+        jenis_kelamin: item.jenis_kelamin,
+        nisn: item.nisn,
+        status: absensiSiswa?.status || '',
+        note: absensiSiswa?.catatan ?? '-'
+      }
+    })
+  } catch (error) {
+    console.error('Gagal memuat data:', error)
+
+    errorMessage.value =
+      'Data gagal dimuat. Pastikan XAMPP aktif dan API siswa.php serta absen.php dapat diakses.'
+
+    show('Gagal memuat data siswa atau absensi dari database.')
+  } finally {
+    loading.value = false
+  }
+}
+
+
+// Statistik status
 const counts = computed(() =>
   Object.fromEntries(
-    statuses.map(s => [
-      s,
-      students.value.filter(x => x.status === s).length
+    statuses.map(status => [
+      status,
+      students.value.filter(
+        student => student.status === status
+      ).length
     ])
   )
 )
 
-const visible = computed(() =>
-  filter.value === 'Semua'
-    ? students.value
-    : students.value.filter(s => s.status === filter.value)
+const belumDiisi = computed(() =>
+  students.value.filter(student => !student.status).length
 )
 
+// Filter tabel termasuk siswa yang belum diisi
+const visible = computed(() => {
+  if (filter.value === 'Semua') {
+    return students.value
+  }
 
-/*
- * Mengubah status sekaligus mengubah catatan
- */
+  if (filter.value === 'Belum diisi') {
+    return students.value.filter(student => !student.status)
+  }
+
+  return students.value.filter(
+    student => student.status === filter.value
+  )
+})
+
+// Mengubah status dan catatan default
 function setStatus(student, status) {
   student.status = status
 
-  // Catatan otomatis mengikuti status
-  student.note = defaultNotes[status]
+  if (defaultNotes[status] !== undefined) {
+    student.note = defaultNotes[status]
+  }
 }
 
-
-/*
- * Semua siswa menjadi Hadir
- */
+// Menandai semua siswa hadir
 function allPresent() {
   students.value.forEach(student => {
     setStatus(student, 'Hadir')
@@ -68,26 +164,78 @@ function allPresent() {
   show('Semua siswa ditandai hadir.')
 }
 
-/*
- * Simpan data
- */
-function save() {
-  localStorage.setItem(
-    'absensi-hari-ini',
-    JSON.stringify(students.value)
+// Menyimpan absensi berdasarkan tanggal
+
+async function save() {
+  if (students.value.length === 0) {
+    show('Data siswa belum tersedia.')
+    return
+  }
+
+  const semuaSudahDiisi = students.value.every(
+    student => Boolean(student.status)
   )
 
-  show('Absensi berhasil disimpan sebagai data lokal.')
+  if (!semuaSudahDiisi) {
+    show('Silakan isi status semua siswa terlebih dahulu.')
+    filter.value = 'Belum diisi'
+    return
+  }
+
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    const payload = {
+      tanggal: today.value,
+      data: students.value.map(student => ({
+        nisn: String(student.nisn),
+        status: student.status,
+        catatan: student.note || '-'
+      }))
+    }
+
+    const response = await fetch(ABSEN_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Gagal menyimpan absensi.')
+    }
+
+    show(`Absensi ${tanggalHariIni.value} berhasil disimpan ke MySQL.`)
+
+    // Muat ulang data dari database untuk memastikan hasil tersimpan
+    await getStudents()
+  } catch (error) {
+    console.error('Gagal menyimpan absensi:', error)
+
+    errorMessage.value = error.message
+
+    show('Absensi gagal disimpan. Periksa API dan koneksi database.')
+  } finally {
+    loading.value = false
+  }
 }
-/*
- * Toast
- */
+
+
 function show(message) {
   toast.value = message
+
   setTimeout(() => {
     toast.value = ''
   }, 2400)
 }
+
+onMounted(() => {
+  getStudents()
+})
 </script>
 
 <template>
@@ -99,9 +247,8 @@ function show(message) {
 <div class="page-head">
     <div>
       <h1>Input Absensi</h1>
-          <p>
-            Kelas 4 · Senin, 22 September 2026 ·
-            Mapel: Olahraga dan Keterampilan , Jam 1–2
+          <p>{{tanggalHariIni}}</p>
+          <p>Mapel : Olahraga dan Keterampilan , Jam 1–2
           </p>
 
         </div>
@@ -128,40 +275,43 @@ function show(message) {
 
       </div>
 
+      <p v-if="loading" class="small-note">
+        Memuat data siswa dari database...
+      </p>
+
+      <p v-else-if="errorMessage" class="small-note">
+          {{ errorMessage }}
+          <button class="btn" @click="getStudents">
+                Coba Lagi
+          </button>
+      </p>
 
       <!-- ================= FILTER ================= -->
+    <div class="tabs">
+      <button
+        class="tab"
+        :class="{ active: filter === 'Semua' }"
+        @click="filter = 'Semua'">
+        Semua ({{ students.length }})
+      </button>
 
-      <div class="tabs">
+      <button
+        class="tab"
+        :class="{ active: filter === 'Belum diisi' }"
+        @click="filter = 'Belum diisi'">
+        Belum diisi ({{ belumDiisi }})
+      </button>
 
-        <button
-          class="tab"
-          :class="{ active: filter === 'Semua' }"
-          @click="filter = 'Semua'"
-        >
-          Semua ({{ students.length }})
-        </button>
-
-
-        <button
-          class="tab"
-          :class="{ active: filter === 'Belum diisi' }"
-          @click="filter = 'Belum diisi'"
-        >
-          Belum diisi (0)
-        </button>
-
-
-        <button
-          v-for="s in statuses"
-          :key="s"
-          class="tab"
-          :class="{ active: filter === s }"
-          @click="filter = s"
-        >
-          {{ s }} ({{ counts[s] }})
-        </button>
-
-      </div>
+  <button
+    v-for="s in statuses"
+    :key="s"
+    class="tab"
+    :class="{ active: filter === s }"
+    @click="filter = s"
+  >
+    {{ s }} ({{ counts[s] }})
+  </button>
+</div>
 
 
       <!-- ================= TABLE ================= -->
@@ -218,31 +368,16 @@ function show(message) {
 
                 <!-- STATUS -->
                 <td>
-
-                  <select
-                    v-model="student.status"
-                    class="status-select"
-                    @change="setStatus(student, student.status)"
-                  >
-
-                    <option value="Hadir">
-                      Hadir
-                    </option>
-
-                    <option value="Sakit">
-                      Sakit
-                    </option>
-
-                    <option value="Izin">
-                      Izin
-                    </option>
-
-                    <option value="Alpha">
-                      Alpha
-                    </option>
-
-                  </select>
-
+                <select
+                  v-model="student.status"
+                  class="status-select" @change="setStatus(student, student.status)">
+  
+                  <option value="">Pilih status</option>
+                  <option value="Hadir">Hadir</option>
+                  <option value="Sakit">Sakit</option>
+                  <option value="Izin">Izin</option>
+                  <option value="Alpha">Alpha</option>
+                </select>
                 </td>
 
 
@@ -277,9 +412,7 @@ function show(message) {
       >
         Menampilkan {{ visible.length }}
         dari {{ students.length }} siswa.
-        Status dapat diubah dengan memilih dropdown.
-        Catatan otomatis mengikuti status dan dapat diedit.
-        Data disimpan di browser untuk demo.
+        Data absensi disimpan ke database MySQL berdasarkan tanggal.
       </p>
 
     </main>

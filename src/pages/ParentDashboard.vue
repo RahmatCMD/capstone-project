@@ -8,7 +8,7 @@ function message() { toast.value = 'Pesan baru siap dikirim ke wali kelas.'; set
 <template>
   <div class="app-shell"><Sidebar role="orang-tua" /><main class="main">
     <div class="page-head">
-      <div><h1>Selamat datang, Bu Siti</h1>
+      <div><h1>Selamat datang, Ratna Wijaya</h1>
       <p>Memantau: <strong>Nadia Putri</strong> · Kelas 4, SD Negeri 173203 Purbatua</p></div>
       <select><option>Nadia Putri — Kelas 4</option></select></div>
       

@@ -1,16 +1,31 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onActivated, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Sidebar from '../components/Sidebar.vue'
 
 const router = useRouter()
 const toast = ref('')
 
-// Tanggal sekarang otomatis
-const now = new Date()
+// API PHP
+const ABSEN_API_URL = 'http://localhost/absensi-api/absen.php'
+
+// ================================
+// TANGGAL DAN KALENDER
+// ================================
+function formatTanggal(date) {
+  const tahun = date.getFullYear()
+  const bulan = String(date.getMonth() + 1).padStart(2, '0')
+  const hari = String(date.getDate()).padStart(2, '0')
+
+  return `${tahun}-${bulan}-${hari}`
+}
+
+function tanggalSekarang() {
+  return formatTanggal(new Date())
+}
 
 const today = computed(() =>
-  now.toLocaleDateString('id-ID', {
+  new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
@@ -18,9 +33,8 @@ const today = computed(() =>
   })
 )
 
-// Format singkat untuk tombol
 const currentDate = computed(() =>
-  now.toLocaleDateString('id-ID', {
+  new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
     day: '2-digit',
     month: 'short',
@@ -28,53 +42,643 @@ const currentDate = computed(() =>
   })
 )
 
-const weekly = [
-  ['26–30 Agu', '96%', '2%', '1%', '1%'],
-  ['2–6 Sep', '94%', '3%', '2%', '1%'],
-  ['9–13 Sep', '91%', '5%', '2%', '2%'],
-  ['16–20 Sep', '90%', '6%', '2%', '2%']
+// Bulan yang sedang ditampilkan pada kalender
+const bulanDitampilkan = ref(
+  new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+)
+
+// Tanggal yang dipilih
+const tanggalDipilih = ref(tanggalSekarang())
+
+const namaBulan = computed(() =>
+  bulanDitampilkan.value.toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric'
+  })
+)
+
+const namaHari = [
+  'Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'
 ]
 
-const attention = [
-  ['Nadia Putri', '3x alpha bulan ini', 'Cek'],
-  ['Bima Saputra', 'sakit 4 hari berturut', 'Cek'],
-  ['Rangga Aditya', 'sering telat', 'Cek'],
-  []
-]
+// Membuat kotak kalender berdasarkan bulan aktif
+const kalender = computed(() => {
+  const tahun = bulanDitampilkan.value.getFullYear()
+  const bulan = bulanDitampilkan.value.getMonth()
+
+  const hariPertama = new Date(tahun, bulan, 1).getDay()
+  const jumlahHari = new Date(tahun, bulan + 1, 0).getDate()
+
+  const tanggal = []
+
+  // Kotak kosong sebelum tanggal 1
+  for (let i = 0; i < hariPertama; i++) {
+    tanggal.push(null)
+  }
+
+  for (let hari = 1; hari <= jumlahHari; hari++) {
+    tanggal.push(formatTanggal(new Date(tahun, bulan, hari)))
+  }
+
+  return tanggal
+})
+
+function ubahBulan(jumlah) {
+  const baru = new Date(
+    bulanDitampilkan.value.getFullYear(),
+    bulanDitampilkan.value.getMonth() + jumlah,
+    1
+  )
+
+  bulanDitampilkan.value = baru
+
+  // Pilih tanggal yang sama jika tersedia pada bulan baru.
+  // Jika tidak, pilih tanggal pertama bulan tersebut.
+  const hariLama = Number(tanggalDipilih.value.slice(-2))
+  const hariAkhir = new Date(
+    baru.getFullYear(),
+    baru.getMonth() + 1,
+    0
+  ).getDate()
+
+  const hariBaru = Math.min(hariLama || 1, hariAkhir)
+
+  tanggalDipilih.value = formatTanggal(
+    new Date(baru.getFullYear(), baru.getMonth(), hariBaru)
+  )
+}
+
+function pilihTanggal(tanggal) {
+  if (!tanggal) return
+  tanggalDipilih.value = tanggal
+}
+
+// ================================
+// DATA ABSENSI DARI DATABASE
+// ================================
+const dataAbsensiBulan = ref([])
+const loading = ref(false)
+const errorApi = ref('')
+
+async function muatAbsensiBulan() {
+  loading.value = true
+  errorApi.value = ''
+
+  const tahun = bulanDitampilkan.value.getFullYear()
+  const bulan = String(
+    bulanDitampilkan.value.getMonth() + 1
+  ).padStart(2, '0')
+
+  try {
+    const response = await fetch(
+      `${ABSEN_API_URL}?bulan=${tahun}-${bulan}`
+    )
+
+    const result = await response.json()
+
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'Gagal mengambil data absensi.')
+    }
+
+    dataAbsensiBulan.value = Array.isArray(result.data)
+      ? result.data
+      : []
+  } catch (error) {
+    console.error('Gagal memuat absensi:', error)
+    errorApi.value =
+      'Data belum dapat dimuat. Periksa Apache, MySQL, dan API PHP.'
+    dataAbsensiBulan.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// Muat ulang data ketika bulan berubah
+watch(bulanDitampilkan, () => {
+  muatAbsensiBulan()
+})
+
+// Ambil data untuk tanggal yang dipilih
+const absensiHariIni = computed(() => {
+  return dataAbsensiBulan.value.filter(
+    item => String(item.tanggal).slice(0, 10) === tanggalDipilih.value
+  )
+})
+
+// Tanggal mana saja yang memiliki data absensi
+const tanggalMemilikiAbsensi = computed(() => {
+  return new Set(
+    dataAbsensiBulan.value.map(
+      item => String(item.tanggal).slice(0, 10)
+    )
+  )
+})
+
+const statistikHariIni = computed(() => {
+  const data = absensiHariIni.value
+
+  return {
+    hadir: data.filter(s => s.status === 'Hadir').length,
+    sakit: data.filter(s => s.status === 'Sakit').length,
+    izin: data.filter(s => s.status === 'Izin').length,
+    alpha: data.filter(s => s.status === 'Alpha').length,
+    belumDiisi: 0,
+    total: data.length
+  }
+})
+
+const persentaseHadir = computed(() => {
+  const total = statistikHariIni.value.total
+
+  if (!total) return 0
+
+  return Math.round(
+    (statistikHariIni.value.hadir / total) * 100
+  )
+})
+
+const tanggalDipilihFormat = computed(() =>
+  new Date(`${tanggalDipilih.value}T12:00:00`).toLocaleDateString(
+    'id-ID',
+    {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }
+  )
+)
+
+// ================================
+// SIKLUS HALAMAN
+// ================================
+onMounted(() => {
+  muatAbsensiBulan()
+  window.addEventListener('focus', muatAbsensiBulan)
+})
+
+onActivated(() => {
+  muatAbsensiBulan()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('focus', muatAbsensiBulan)
+})
 
 function show(message) {
   toast.value = message
-  setTimeout(() => toast.value = '', 2200)
+  setTimeout(() => {
+    toast.value = ''
+  }, 2200)
 }
 </script>
 
 <template>
   <div class="app-shell">
     <Sidebar role="guru" />
-    <main class="main">
-      <div class="page-head">
-        <div><h1>Selamat pagi, Pak Manto</h1><p>{{ today }} · Kelas 4, SD Negeri 173203 Purbatua</p></div>
-        <div class="actions"><button class="btn">{{ currentDate }}</button><button class="btn primary" @click="router.push('/guru/absensi')">+ Input Absensi Hari Ini</button></div>
+
+    
+<main class="main">
+  <div class="page-head">
+    <div>
+      <h1>Selamat pagi, Pak Manto</h1>
+      <p>{{ today }}</p>
+    </div>
+
+    <div class="actions">
+      <button class="btn">{{ currentDate }}</button>
+      <button
+        class="btn primary"
+        @click="router.push('/guru/absensi')"
+      >
+        + Input Absensi Hari Ini
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistik absensi -->
+  <section class="grid stats">
+    <div class="card stat-card">
+      <h3 class="card-title">Hadir Hari Ini</h3>
+      <div class="big-number" style="color:#56816d">
+        {{ statistikHariIni.hadir }}
+      </div>
+      <div class="small-note">
+        dari {{ statistikHariIni.total }} catatan absensi
+        ({{ persentaseHadir }}%)
+      </div>
+    </div>
+
+    <div class="card stat-card">
+      <h3 class="card-title">Sakit</h3>
+      <div class="big-number" style="color:#bd922d">
+        {{ statistikHariIni.sakit }}
+      </div>
+      <div class="small-note">siswa berstatus sakit</div>
+    </div>
+
+    <div class="card stat-card">
+      <h3 class="card-title">Izin</h3>
+      <div class="big-number" style="color:#5b7890">
+        {{ statistikHariIni.izin }}
+      </div>
+      <div class="small-note">siswa berstatus izin</div>
+    </div>
+
+    <div class="card stat-card">
+      <h3 class="card-title">Alpha</h3>
+      <div class="big-number" style="color:#bd554e">
+        {{ statistikHariIni.alpha }}
+      </div>
+      <div class="small-note">siswa berstatus alpha</div>
+    </div>
+  </section>
+
+  <!-- KALENDER ABSENSI -->
+  <section class="card calendar-card">
+    <div class="section-heading">
+      <div>
+        <h2>Kalender Absensi</h2>
+        <p>Pilih tanggal untuk melihat data kehadiran siswa.</p>
       </div>
 
-      <section class="grid stats">
-        <div class="card stat-card"><h3 class="card-title">Hadir Hari Ini</h3><div class="big-number" style="color:#56816d">27</div><div class="small-note">dari 30 siswa (90%)</div></div>
-        <div class="card stat-card"><h3 class="card-title">Sakit</h3><div class="big-number" style="color:#bd922d">2</div><div class="small-note">butuh surat keterangan</div></div>
-        <div class="card stat-card"><h3 class="card-title">Izin</h3><div class="big-number" style="color:#5b7890">1</div><div class="small-note">sudah ada keterangan</div></div>
-        <div class="card stat-card"><h3 class="card-title">Belum Diisi</h3><div class="big-number">0</div><div class="small-note">absensi hari ini sudah lengkap</div></div>
-      </section>
+      <div class="calendar-navigation">
+        <button
+          class="calendar-nav-btn"
+          aria-label="Bulan sebelumnya"
+          @click="ubahBulan(-1)"
+        >
+          ‹
+        </button>
 
-      <section class="card section">
-        <h3 class="card-title">Kehadiran Kelas 4 — 4 Minggu Terakhir</h3>
-        <div class="table-wrap"><table><thead><tr><th>Minggu</th><th>Hadir</th><th>Sakit</th><th>Izin</th><th>Alpha</th></tr></thead><tbody><tr v-for="row in weekly" :key="row[0]"><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td><td>{{ row[4] }}</td></tr></tbody></table></div>
-        <div class="small-note" style="margin-top:10px">Tren kehadiran menurun ringan 3 minggu terakhir — pantau di halaman Riwayat & Rekap.</div>
-      </section>
+        <strong>{{ namaBulan }}</strong>
 
-      <section class="card section">
-        <h3 class="card-title">Perlu Perhatian</h3>
-        <div v-for="item in attention" :key="item[0]" class="attention-row"><span>{{ item[0] }} — {{ item[1] }}</span><button class="link-button" @click="show(item[2] === 'Isi' ? 'Form nilai dibuka pada modul Nilai & Tugas.' : 'Detail siswa dibuka.')">{{ item[2] }}</button></div>
-      </section>
-    </main>
-    <div v-if="toast" class="toast">{{ toast }}</div>
+        <button
+          class="calendar-nav-btn"
+          aria-label="Bulan berikutnya"
+          @click="ubahBulan(1)"
+        >
+          ›
+        </button>
+      </div>
+    </div>
+
+    <div class="calendar-grid">
+      <div
+        v-for="hari in namaHari"
+        :key="hari"
+        class="calendar-weekday"
+      >
+        {{ hari }}
+      </div>
+
+      <template v-for="(tanggal, index) in kalender" :key="index">
+        <div v-if="!tanggal" class="calendar-empty"></div>
+
+        <button
+          v-else
+          class="calendar-day"
+          :class="{
+            selected: tanggal === tanggalDipilih,
+            'has-attendance': tanggalMemilikiAbsensi.has(tanggal),
+            'is-today': tanggal === tanggalSekarang()
+          }"
+          @click="pilihTanggal(tanggal)"
+        >
+          <span>{{ Number(tanggal.slice(-2)) }}</span>
+          <span
+            v-if="tanggalMemilikiAbsensi.has(tanggal)"
+            class="attendance-dot"
+            aria-label="Ada data absensi"
+          ></span>
+        </button>
+      </template>
+    </div>
+
+    <div class="calendar-legend">
+      <span><i class="legend-dot"></i> Ada data absensi</span>
+      <span><i class="legend-today"></i> Hari ini</span>
+    </div>
+  </section>
+
+  <!-- DAFTAR SISWA BERDASARKAN TANGGAL -->
+  <section class="card attendance-list-card">
+    <div class="section-heading">
+      <div>
+        <h2>Data Absensi Siswa</h2>
+        <p>{{ tanggalDipilihFormat }}</p>
+      </div>
+
+      <span class="attendance-count">
+        {{ absensiHariIni.length }} data
+      </span>
+    </div>
+
+    <div v-if="loading" class="empty-state">
+      Memuat data absensi...
+    </div>
+
+    <div v-else-if="errorApi" class="empty-state error-state">
+      {{ errorApi }}
+      <button class="btn primary" @click="muatAbsensiBulan">
+        Coba Lagi
+      </button>
+    </div>
+
+    <div v-else-if="absensiHariIni.length === 0" class="empty-state">
+      Belum ada data absensi pada tanggal ini.
+    </div>
+
+    <div v-else class="table-wrapper">
+      <table class="attendance-table">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Nama Siswa</th>
+            <th>NISN</th>
+            <th>Status</th>
+            <th>Catatan</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr
+            v-for="(siswa, index) in absensiHariIni"
+            :key="`${siswa.nisn}-${siswa.tanggal}`"
+          >
+            <td>{{ index + 1 }}</td>
+            <td>{{ siswa.nama_siswa || siswa.nama || '-' }}</td>
+            <td>{{ siswa.nisn }}</td>
+            <td>
+              <span
+                class="status-label"
+                :class="String(siswa.status || '').toLowerCase()"
+              >
+                {{ siswa.status || '-' }}
+              </span>
+            </td>
+            <td>{{ siswa.catatan || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+
+    <div v-if="toast" class="toast">
+      {{ toast }}
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* Kalender dan daftar absensi */
+.calendar-card,
+.attendance-list-card {
+  margin-top: 22px;
+  padding: 22px;
+  min-width: 0;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.section-heading h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  color: var(--text, #2e3136);
+}
+
+.section-heading p {
+  margin: 0;
+  color: var(--muted, #747a80);
+  font-size: 13px;
+}
+
+.calendar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.calendar-navigation strong {
+  min-width: 145px;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.calendar-nav-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border, #dfe2dc);
+  border-radius: 8px;
+  background: white;
+  color: var(--navy, #1e3a5f);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.calendar-nav-btn:hover {
+  background: #eaf3fb;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.calendar-weekday {
+  padding: 10px 2px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #747a80);
+}
+
+.calendar-day,
+.calendar-empty {
+  min-height: 60px;
+}
+
+.calendar-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border, #dfe2dc);
+  border-radius: 9px;
+  background: white;
+  color: var(--text, #2e3136);
+  cursor: pointer;
+}
+
+.calendar-day:hover {
+  border-color: var(--navy, #1e3a5f);
+  background: #eef5fc;
+}
+
+.calendar-day.selected {
+  background: var(--navy, #1e3a5f);
+  color: white;
+  border-color: var(--navy, #1e3a5f);
+}
+
+.calendar-day.is-today:not(.selected) {
+  border: 2px solid #2196e9;
+  font-weight: 700;
+}
+
+.attendance-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4f8068;
+}
+
+.calendar-day.selected .attendance-dot {
+  background: #f59e0b;
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 18px;
+  color: var(--muted, #747a80);
+  font-size: 12px;
+}
+
+.calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend-dot,
+.legend-today {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #4f8068;
+}
+
+.legend-today {
+  background: #2196e9;
+}
+
+.attendance-count {
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: #eaf3fb;
+  color: var(--navy, #1e3a5f);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.attendance-table th,
+.attendance-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--border, #dfe2dc);
+  vertical-align: top;
+}
+
+.attendance-table th {
+  background: #f4f5f0;
+  color: var(--text, #2e3136);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-label {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: #edf0f2;
+  color: #555;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.status-label.hadir {
+  background: #e6f3eb;
+  color: #397452;
+}
+
+.status-label.sakit {
+  background: #fff3d8;
+  color: #966b10;
+}
+
+.status-label.izin {
+  background: #e8f0fa;
+  color: #426a92;
+}
+
+.status-label.alpha {
+  background: #fbe8e6;
+  color: #a33e38;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--muted, #747a80);
+  font-size: 14px;
+}
+
+.error-state {
+  color: #a33e38;
+}
+
+@media (max-width: 600px) {
+  .calendar-card,
+  .attendance-list-card {
+    padding: 15px;
+  }
+
+  .calendar-grid {
+    gap: 4px;
+  }
+
+  .calendar-day,
+  .calendar-empty {
+    min-height: 43px;
+  }
+
+  .calendar-weekday {
+    font-size: 11px;
+  }
+
+  .attendance-table th,
+  .attendance-table td {
+    padding: 10px 9px;
+  }
+}
+
+</style>

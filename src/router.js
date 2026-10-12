@@ -5,6 +5,9 @@ import TeacherDashboard from './pages/TeacherDashboard.vue'
 import AttendanceInput from './pages/AttendanceInput.vue'
 import AttendanceHistory from './pages/AttendanceHistory.vue'
 import KelasSaya from './pages/KelasSaya.vue'
+import NilaiTugas from './pages/NilaiTugas.vue'
+import TentangKami from './pages/TentangKami.vue'
+import Pengumuman from './pages/Pengumuman.vue'
 import ParentDashboard from './pages/ParentDashboard.vue'
 import ChildAttendance from './pages/ChildAttendance.vue'
 import ProfileSettings from './pages/ProfileSettings.vue'
@@ -41,13 +44,26 @@ const router = createRouter({
       meta: { role: 'guru' }
     },
 
-    // KELAS SAYA
     {
       path: '/guru/kelas-saya',
       component: KelasSaya,
       meta: { role: 'guru' }
     },
-
+    {
+      path: '/guru/nilai-tugas',
+      component: NilaiTugas,
+      meta: { role: 'guru' }
+    },
+    {
+      path: '/guru/tentang-kami',
+      component: TentangKami,
+      meta: { role: 'guru' }
+    },
+    {
+      path: '/guru/pengumuman',
+      component: Pengumuman,
+      meta: { role: 'guru' }
+    },
     {
       path: '/orang-tua/dashboard',
       component: ParentDashboard,
@@ -65,7 +81,16 @@ const router = createRouter({
       component: ProfileSettings,
       meta: { role: 'orang-tua' }
     },
-
+    {
+      path: '/orang-tua/tentang-kami',
+      component: TentangKami,
+      meta: { role: 'orang-tua' }
+    },
+    {
+      path: '/orang-tua/pengumuman',
+      component: Pengumuman,
+      meta: { role: 'orang-tua' }
+    },
     {
       path: '/:pathMatch(.*)*',
       redirect: '/login'
