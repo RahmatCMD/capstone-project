@@ -341,4 +341,113 @@ tr:last-child td { border-bottom: 0; }
     flex: 1 1 0;
     min-width: 0;
   }
+  /* =====================================
+  SIDEBAR DESKTOP: COLLAPSE / EXPAND
+===================================== */
+
+@media (min-width: 721px) {
+  .sidebar {
+    position: relative;
+    width: 250px;
+    flex: 0 0 250px;
+    transition:
+      width 0.3s ease,
+      flex-basis 0.3s ease;
+  }
+
+  /* Sidebar ketika diperkecil */
+  .sidebar.sidebar-collapsed {
+    width: 80px;
+    flex: 0 0 80px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  /* Tombol panah */
+  .desktop-sidebar-toggle {
+    position: absolute;
+    top: 82px;
+    right: -14px;
+    z-index: 20;
+
+    width: 28px;
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+
+    background: var(--navy);
+    color: white;
+
+    font-size: 22px;
+    cursor: pointer;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .desktop-sidebar-toggle:hover {
+    background: var(--navy-2);
+  }
+
+  /* Sembunyikan informasi teks ketika sidebar mengecil */
+  .sidebar.sidebar-collapsed .brand > div:last-child,
+  .sidebar.sidebar-collapsed .nav-title,
+  .sidebar.sidebar-collapsed .nav-link > span,
+  .sidebar.sidebar-collapsed .user-name,
+  .sidebar.sidebar-collapsed .user-role {
+    display: none;
+  }
+
+  /* Logo tetap terlihat */
+  .sidebar.sidebar-collapsed .brand {
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 30px;
+  }
+
+  .sidebar.sidebar-collapsed .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Menu menjadi lebih ringkas */
+  .sidebar.sidebar-collapsed .nav-link {
+    justify-content: center;
+    padding: 12px 5px;
+    text-align: center;
+  }
+
+  .sidebar.sidebar-collapsed .submenu {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .sidebar.sidebar-collapsed .submenu-link {
+    text-align: center;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Informasi pengguna */
+  .sidebar.sidebar-collapsed .user-card {
+    justify-content: center;
+  }
+
+  /* Tombol panah tetap berada di dalam sidebar pada mobile */
+  .desktop-sidebar-toggle {
+    display: flex;
+  }
+}
+
+/* Tombol collapse tidak diperlukan pada navigasi mobile */
+@media (max-width: 720px) {
+  .desktop-sidebar-toggle {
+    display: none;
+  }
+  }
 }

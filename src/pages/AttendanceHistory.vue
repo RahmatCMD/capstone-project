@@ -356,10 +356,6 @@ function exportData() {
         <section class="rekap-tabel">
           <div class="judul-tabel">
             <h2>Rekap Kehadiran Siswa</h2>
-            <p>
-              Rekap absensi siswa berdasarkan data yang tersimpan
-              pada bulan {{ formatBulan(bulanDipilih) }}.
-            </p>
           </div>
 
           <!-- Filter tetap tersedia -->
@@ -454,8 +450,7 @@ function exportData() {
           </div>
 
           <p class="catatan-bawah">
-            Jumlah kehadiran dihitung otomatis dari data Input Absensi.
-            Tombol Detail dapat digunakan untuk melihat rekap siswa.
+            Rekap data absen siswa per 1 bulan berjalan.
           </p>
         </section>
       </section>
@@ -515,7 +510,7 @@ function exportData() {
 
 .ringkasan-item span {
   color: #666;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .ringkasan-item strong {
@@ -642,7 +637,7 @@ td:not(:first-child) {
 .catatan-bawah {
   margin: 22px 0 0;
   color: #666;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.6;
 }
 

@@ -1,4 +1,119 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import Sidebar from '../components/Sidebar.vue'
 
+const students = ref([])
+const loading = ref(false)
+const error = ref('')
+const dbConnected = ref(false)
+
+const showAddModal = ref(false)
+const saving = ref(false)
+const formError = ref('')
+
+const form = ref({
+  nama_siswa: '',
+  jenis_kelamin: '',
+  nisn: '',
+  alamat:''
+})
+
+const addStudent = async () => {
+  if (saving.value) return
+
+  saving.value = true
+  formError.value = ''
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        nama_siswa: form.value.nama_siswa,
+        jenis_kelamin: form.value.jenis_kelamin,
+        nisn: form.value.nisn
+      })
+    })
+
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || 'Gagal menyimpan data siswa'
+      )
+    }
+
+    // Tutup modal dan kosongkan formulir
+    showAddModal.value = false
+
+    form.value = {
+      nama_siswa: '',
+      jenis_kelamin: '',
+      nisn: '',
+      alamat:''
+    }
+
+    // Ambil ulang data dari database
+    await getStudents()
+
+    window.alert('Siswa berhasil ditambahkan!')
+
+  } catch (err) {
+    console.error('Gagal menambahkan siswa:', err)
+
+    formError.value =
+      err.message || 'Terjadi kesalahan saat menyimpan data'
+  } finally {
+    saving.value = false
+  }
+}
+
+// Alamat PHP API
+const API_URL =
+'http://localhost/absensi-api/siswa.php'
+
+// Mengambil data dari MySQL melalui PHP
+const getStudents = async () => {
+loading.value = true
+error.value = ''
+
+try {
+    const response = await fetch(API_URL)
+
+    if (!response.ok) {
+    throw new Error('Server API tidak merespons')
+    }
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(
+        result.message || 'Gagal mengambil data'
+      )
+    }
+
+    students.value = result.data
+    dbConnected.value = true
+
+  } catch (err) {
+    console.error('Kesalahan:', err)
+
+    error.value =
+      'Data siswa gagal dimuat. Periksa koneksi PHP dan MySQL.'
+
+    dbConnected.value = false
+  } finally {
+    loading.value = false
+  }
+}
+
+// Memuat data saat halaman dibuka
+onMounted(() => {
+  getStudents()
+})
+</script>
 <template>
   <div class="app-shell">
     <Sidebar role="guru" />
@@ -11,7 +126,7 @@
           <p>Daftar siswa kelas 4</p>
         </div>
 
-        <button class="btn primary">
+        <button class="btn primary" @click="showAddModal = true">
           + Tambah Siswa
         </button>
       </div>
@@ -97,63 +212,88 @@
           </table>
         </div>
       </section>
+      
+<!-- Modal Tambah Siswa -->
+<div v-if="showAddModal" class="modal-overlay" @click.self="showAddModal = false">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h2>Tambah Siswa</h2>
+        <p>Masukkan data siswa baru</p>
+      </div>
+
+      <button
+        type="button"
+        class="modal-close"
+        @click="showAddModal = false"
+      >
+        &times;
+      </button>
+    </div>
+
+    <form @submit.prevent="addStudent">
+      <div class="form-group">
+        <label for="nama-siswa">Nama Siswa</label>
+        <input
+          id="nama-siswa"
+          v-model.trim="form.nama_siswa"
+          type="text"
+          placeholder="Masukkan nama lengkap"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="jenis-kelamin">Jenis Kelamin</label>
+        <select
+          id="jenis-kelamin"
+          v-model="form.jenis_kelamin"
+          required
+        >
+          <option value="" disabled>Pilih jenis kelamin</option>
+          <option value="Laki-laki">Laki-laki</option>
+          <option value="Perempuan">Perempuan</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <div class="form-group">
+        <label for="alamat">Alamat</label>
+        <textarea id="alamat"
+          v-model.trim="form.alamat"
+          placeholder="Masukkan alamat siswa"
+          rows="3"></textarea>
+        </div>
+      </div>
+
+      <p v-if="formError" class="form-error">
+        {{ formError }}
+      </p>
+
+      <div class="modal-actions">
+        <button
+          type="button"
+          class="btn cancel"
+          @click="showAddModal = false"
+        >
+          Batal
+        </button>
+
+        <button
+          type="submit"
+          class="btn primary"
+          :disabled="saving"
+        >
+          {{ saving ? 'Menyimpan...' : 'Simpan Siswa' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
     </main>
   </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-import Sidebar from '../components/Sidebar.vue'
-
-const students = ref([])
-const loading = ref(false)
-const error = ref('')
-const dbConnected = ref(false)
-
-// Alamat PHP API
-const API_URL =
-'http://localhost/absensi-api/siswa.php'
-
-// Mengambil data dari MySQL melalui PHP
-const getStudents = async () => {
-loading.value = true
-error.value = ''
-
-try {
-    const response = await fetch(API_URL)
-
-    if (!response.ok) {
-    throw new Error('Server API tidak merespons')
-    }
-
-    const result = await response.json()
-
-    if (!result.success) {
-      throw new Error(
-        result.message || 'Gagal mengambil data'
-      )
-    }
-
-    students.value = result.data
-    dbConnected.value = true
-
-  } catch (err) {
-    console.error('Kesalahan:', err)
-
-    error.value =
-      'Data siswa gagal dimuat. Periksa koneksi PHP dan MySQL.'
-
-    dbConnected.value = false
-  } finally {
-    loading.value = false
-  }
-}
-
-// Memuat data saat halaman dibuka
-onMounted(() => {
-  getStudents()
-})
-</script>
 
 <style scoped>
 .app-shell {
@@ -321,8 +461,8 @@ td:first-child {
 }
 
 .student-name {
-  font-weight: 600;
-  color: #20293a;
+  font-weight: 500;
+  color: #272727;
 }
 
 .message,
@@ -351,4 +491,120 @@ td:first-child {
     flex-direction: column;
 }
 }
+
+/* Modal Tambah Siswa */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 22px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #20293a;
+  font-size: 20px;
+}
+
+.modal-header p {
+  margin: 7px 0 0;
+  color: #8992a3;
+  font-size: 13px;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 27px;
+  cursor: pointer;
+}
+
+.modal-card form {
+  padding: 22px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  color: #394357;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #dfe4ec;
+  border-radius: 9px;
+  background: white;
+  color: #20293a;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: 2px solid #bfdbfe;
+  border-color: #2563eb;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.form-error {
+  color: #dc2626;
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+  }
+}
+
 </style>

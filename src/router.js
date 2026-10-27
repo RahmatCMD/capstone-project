@@ -11,6 +11,7 @@ import Pengumuman from './pages/Pengumuman.vue'
 import ParentDashboard from './pages/ParentDashboard.vue'
 import ChildAttendance from './pages/ChildAttendance.vue'
 import ProfileSettings from './pages/ProfileSettings.vue'
+import KemajuanBelajar from './pages/KemajuanBelajar.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -89,6 +90,11 @@ const router = createRouter({
     {
       path: '/orang-tua/pengumuman',
       component: Pengumuman,
+      meta: { role: 'orang-tua' }
+    },
+    {
+      path: '/orang-tua/kemajuansiswa',
+      component: KemajuanBelajar,
       meta: { role: 'orang-tua' }
     },
     {

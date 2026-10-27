@@ -1,4 +1,3 @@
-
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,11 +12,14 @@ const router = useRouter()
 
 const menuTerbuka = ref(false)
 const profilTerbuka = ref(false)
+const sidebarMenyusut = ref(true)
 
+function toggleSidebar() {
+  sidebarMenyusut.value = !sidebarMenyusut.value
+}
 function tutupMenu() {
   menuTerbuka.value = false
 }
-
 // Menu otomatis terbuka ketika halaman Tentang Kami
 // atau Pengumuman sedang aktif.
 watch(
@@ -44,8 +46,7 @@ const menus = computed(() => props.role === 'guru'
   : [
       { label: 'Dashboard', to: '/orang-tua/dashboard' },
       { label: 'Absensi Anak', to: '/orang-tua/absensi' },
-      { label: 'Kemajuan Belajar', to: '/orang-tua/absensi' },
-      { label: 'Pesan dari Guru', to: '/orang-tua/dashboard' }
+      { label: 'Kemajuan Belajar', to: '/orang-tua/kemajuansiswa' },
     ])
 
 const profilMenus = computed(() => {
@@ -87,10 +88,23 @@ function logout() {
     </button>
   </header>
 
-  <aside
-    class="sidebar"
-    :class="{ 'mobile-open': menuTerbuka }"
+<aside
+  class="sidebar"
+  :class="{
+    'mobile-open': menuTerbuka,
+    'sidebar-collapsed': sidebarMenyusut
+  }"
+>
+  <button
+    class="desktop-sidebar-toggle"
+    type="button"
+    @click="toggleSidebar"
+    :aria-label="sidebarMenyusut ? 'Buka sidebar' : 'Tutup sidebar'"
   >
+    {{ sidebarMenyusut ? '»' : '«' }}
+  </button>
+
+  <!-- Pertahankan seluruh isi sidebar kamu di sini -->
     <div class="brand">
       <div class="brand-mark">
         <img :src="logo" alt="Logo Sekolah" />
@@ -132,8 +146,8 @@ function logout() {
   :aria-expanded="profilTerbuka"
   @click="profilTerbuka = !profilTerbuka"
 >
-  <span> Profil & Informasi</span>
-  <span class="submenu-arrow ">
+  Profil & Informasi
+  <span class="submenu-arrow">
     {{ profilTerbuka ? '⌄' : '›' }}
   </span>
 </button>

@@ -1,53 +1,128 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch, onUnmounted } from 'vue'
 import Sidebar from '../components/Sidebar.vue'
 
-const mataPelajaran = 'Olahraga dan Keterampilan'
-const storageKey = 'nilai-tugas'
+const SISWA_API_URL = 'http://localhost/absensi-api/siswa.php'
+const NILAI_API_URL = 'http://localhost/absensi-api/nilai.php'
 
-// Data awal hanya sebagai contoh.
-// Nanti nama siswa dapat diambil dari database MySQL.
+const mataPelajaran = 'Olahraga dan Keterampilan'
+
 const siswaAwal = [
-  { nisn: '0091234561', name: 'Aditya Rahman', nilai: '' },
-  { nisn: '0091234562', name: 'Bima Saputra', nilai: '' },
-  { nisn: '0091234563', name: 'Citra Ayu Lestari', nilai: '' },
-  { nisn: '0091234564', name: 'Dimas Prakoso', nilai: '' },
-  { nisn: '0091234565', name: 'Nadia Putri', nilai: '' },
-  { nisn: '0091234566', name: 'Fajar Nugroho', nilai: '' },
-  { nisn: '0091234567', name: 'Gita Ramadhani', nilai: '' },
-  { nisn: '0091234568', name: 'Rangga Aditya', nilai: '' },
-  { nisn: '0091234569', name: 'Salsabila Putri', nilai: '' },
-  { nisn: '0091234570', name: 'Rizky Maulana', nilai: '' }
+  { nisn: '0091234561', name: 'Aditya Rahman' },
+  { nisn: '0091234562', name: 'Bima Saputra' },
+  { nisn: '0091234563', name: 'Citra Ayu Lestari' },
+  { nisn: '0091234564', name: 'Dimas Prakoso' },
+  { nisn: '0091234565', name: 'Nadia Putri' },
+  { nisn: '0091234566', name: 'Fajar Nugroho' },
+  { nisn: '0091234567', name: 'Gita Ramadhani' },
+  { nisn: '0091234568', name: 'Rangga Aditya' },
+  { nisn: '0091234569', name: 'Salsabila Putri' },
+  { nisn: '0091234570', name: 'Rizky Maulana' },
+  { nisn: '0091234571', name: 'Ahmad Elzan Nur Fadillah' }
 ]
 
-function bacaNilai() {
-  return siswaAwal.map(siswa => ({ ...siswa }))
+function siswaBaru(item) {
+  return {
+    ...item,
+    id_siswa: null,
+    nilaiPraktik: '',
+    nilaiTertulis: '',
+    tanggalPraktik: '',
+    tanggalTertulis: '',
+    tugasDipilih: 'praktik'
+  }
 }
 
-const siswa = ref(siswaAwal.map(siswa => ({ ...siswa })))
+const siswa = ref(siswaAwal.map(siswaBaru))
 const pencarian = ref('')
 const toast = ref('')
-
-// Kosongkan nilai setiap kali halaman dibuka
-onMounted(() => {
-  siswa.value = siswaAwal.map(siswa => ({
-    ...siswa,
-    nilai: ''
-  }))
-
-  // Hapus nilai lama dari browser
-  localStorage.removeItem(storageKey)
-})
-
+const loading = ref(false)
 const modalTerbuka = ref(false)
 const modeEdit = ref(false)
+const menyimpanNilai = ref(false)
+
 const form = ref({
   nisn: '',
   name: '',
+  jenisTugas: 'praktik',
   nilai: ''
 })
 
+const pilihanNilai = Array.from({ length: 101 }, (_, index) => index)
+
 let toastTimer
+
+async function muatDataNilai() {
+  loading.value = true
+
+  try {
+    const responsSiswa = await fetch(SISWA_API_URL)
+    const hasilSiswa = await responsSiswa.json()
+
+    if (!responsSiswa.ok || !hasilSiswa.success) {
+      throw new Error(hasilSiswa.message || 'Gagal mengambil data siswa.')
+    }
+
+    const dataSiswaDB = hasilSiswa.data || []
+
+    const siswaDenganId = siswaAwal.map(item => {
+      const siswaDB = dataSiswaDB.find(
+        data =>
+          String(data.nisn || '') === String(item.nisn) ||
+          String(data.nama_siswa || '').trim().toLowerCase() ===
+            item.name.trim().toLowerCase()
+      )
+
+      return {
+        ...siswaBaru(item),
+        id_siswa: siswaDB?.id_siswa ?? null
+      }
+    })
+
+    const responsNilai = await fetch(NILAI_API_URL)
+    const hasilNilai = await responsNilai.json()
+
+    if (!responsNilai.ok || !hasilNilai.success) {
+      throw new Error(hasilNilai.message || 'Gagal mengambil data nilai.')
+    }
+
+    const semuaNilai = hasilNilai.data || []
+
+    siswa.value = siswaDenganId.map(item => {
+      const nilaiPraktik = semuaNilai.find(
+        nilai =>
+          String(nilai.id_siswa) === String(item.id_siswa) &&
+          nilai.jenis_tugas === 'praktik'
+      )
+
+      const nilaiTertulis = semuaNilai.find(
+        nilai =>
+          String(nilai.id_siswa) === String(item.id_siswa) &&
+          nilai.jenis_tugas === 'tertulis'
+      )
+
+      return {
+        ...item,
+        nilaiPraktik: nilaiPraktik ? Number(nilaiPraktik.nilai) : '',
+        nilaiTertulis: nilaiTertulis ? Number(nilaiTertulis.nilai) : '',
+        tanggalPraktik: nilaiPraktik?.tanggal_nilai
+          ? String(nilaiPraktik.tanggal_nilai).slice(0, 10)
+          : '',
+        tanggalTertulis: nilaiTertulis?.tanggal_nilai
+          ? String(nilaiTertulis.tanggal_nilai).slice(0, 10)
+          : ''
+      }
+    })
+  } catch (error) {
+    console.error('Gagal memuat nilai:', error)
+    tampilkanToast(error.message || 'Gagal mengambil data dari database.')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(muatDataNilai)
+onUnmounted(() => clearTimeout(toastTimer))
 
 function grade(nilai) {
   if (
@@ -62,11 +137,53 @@ function grade(nilai) {
   }
 
   const angka = Number(nilai)
-
   if (angka >= 88) return 'A'
   if (angka >= 71) return 'B'
   if (angka >= 55) return 'C'
   return 'D'
+}
+
+function nilaiOverall(item) {
+  if (item.nilaiPraktik === '' || item.nilaiTertulis === '') return null
+
+  return Math.round(
+    (Number(item.nilaiPraktik) + Number(item.nilaiTertulis)) / 2
+  )
+}
+
+function gradeOverall(item) {
+  const overall = nilaiOverall(item)
+  return overall === null ? '' : grade(overall)
+}
+
+function nilaiBerdasarkanTugas(item) {
+  return item.tugasDipilih === 'tertulis'
+    ? (item.nilaiTertulis !== '' ? item.nilaiTertulis : '-')
+    : (item.nilaiPraktik !== '' ? item.nilaiPraktik : '-')
+}
+
+function overallPreview() {
+  if (form.value.nilai === '' || form.value.nisn === '') return null
+
+  const item = siswa.value.find(siswaItem => siswaItem.nisn === form.value.nisn)
+  if (!item) return null
+
+  const nilaiPraktik = form.value.jenisTugas === 'praktik'
+    ? Number(form.value.nilai)
+    : item.nilaiPraktik
+
+  const nilaiTertulis = form.value.jenisTugas === 'tertulis'
+    ? Number(form.value.nilai)
+    : item.nilaiTertulis
+
+  if (nilaiPraktik === '' || nilaiTertulis === '') return null
+
+  return Math.round((Number(nilaiPraktik) + Number(nilaiTertulis)) / 2)
+}
+
+function gradePreview() {
+  const overall = overallPreview()
+  return overall === null ? '' : grade(overall)
 }
 
 const daftarSiswa = computed(() => {
@@ -76,29 +193,23 @@ const daftarSiswa = computed(() => {
     .filter(item => item.name.toLowerCase().includes(kata))
     .map(item => ({
       ...item,
-      grade: grade(item.nilai)
+      overall: nilaiOverall(item),
+      grade: gradeOverall(item)
     }))
 })
 
 const jumlahSiswa = computed(() => siswa.value.length)
 
 const nilaiValid = computed(() =>
-  siswa.value.filter(item =>
-    item.nilai !== '' &&
-    Number.isFinite(Number(item.nilai)) &&
-    Number(item.nilai) >= 0 &&
-    Number(item.nilai) <= 100
-  )
+  siswa.value
+    .map(item => nilaiOverall(item))
+    .filter(nilai => nilai !== null)
 )
 
 const rataRata = computed(() => {
-  if (!nilaiValid.value.length) return 0
+  if (!nilaiValid.value.length) return '-'
 
-  const total = nilaiValid.value.reduce(
-    (jumlah, item) => jumlah + Number(item.nilai),
-    0
-  )
-
+  const total = nilaiValid.value.reduce((jumlah, nilai) => jumlah + nilai, 0)
   return Math.round(total / nilaiValid.value.length)
 })
 
@@ -108,27 +219,88 @@ const gradeTertinggi = computed(() => {
   const urutan = { A: 4, B: 3, C: 2, D: 1 }
 
   return nilaiValid.value
-    .map(item => grade(item.nilai))
+    .map(nilai => grade(nilai))
     .sort((a, b) => urutan[b] - urutan[a])[0]
 })
-
-function simpanKeBrowser() {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(siswa.value))
-    return true
-  } catch (error) {
-    console.error('Gagal menyimpan nilai:', error)
-    tampilkanToast('Nilai gagal disimpan.')
-    return false
-  }
-}
 
 function tampilkanToast(pesan) {
   toast.value = pesan
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => {
     toast.value = ''
-  }, 2500)
+  }, 3000)
+}
+
+function ubahJenisTugas(item, jenisTugas) {
+  const dataSiswa = siswa.value.find(siswaItem => siswaItem.nisn === item.nisn)
+  if (!dataSiswa) return
+
+  dataSiswa.tugasDipilih = jenisTugas
+}
+
+async function simpanKeDatabase(item, jenisTugas, nilai) {
+  if (!item.id_siswa) {
+    tampilkanToast(`ID database untuk ${item.name} tidak ditemukan. Periksa data siswa di database.`)
+    return false
+  }
+
+  try {
+    const respons = await fetch(NILAI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_siswa: Number(item.id_siswa),
+        jenis_tugas: jenisTugas,
+        nilai: Number(nilai)
+      })
+    })
+
+    const hasil = await respons.json()
+
+    if (!respons.ok || !hasil.success) {
+      throw new Error(hasil.message || 'Nilai gagal disimpan.')
+    }
+
+    return true
+  } catch (error) {
+    console.error('Gagal menyimpan nilai ke database:', error)
+    tampilkanToast(error.message || 'Gagal menghubungi server.')
+    return false
+  }
+}
+
+async function ubahNilai(item, nilai) {
+  const dataSiswa = siswa.value.find(siswaItem => siswaItem.nisn === item.nisn)
+  if (!dataSiswa) return
+
+  if (nilai === '') {
+    tampilkanToast('Pilih nilai antara 0 sampai 100.')
+    return
+  }
+
+  const angka = Number(nilai)
+  const jenisTugas = dataSiswa.tugasDipilih || 'praktik'
+
+  const berhasil = await simpanKeDatabase(dataSiswa, jenisTugas, angka)
+  if (!berhasil) return
+
+  if (jenisTugas === 'praktik') {
+    dataSiswa.nilaiPraktik = angka
+    dataSiswa.tanggalPraktik = tanggalLokalUntukNilai()
+  } else {
+    dataSiswa.nilaiTertulis = angka
+    dataSiswa.tanggalTertulis = tanggalLokalUntukNilai()
+  }
+
+  tampilkanToast('Nilai berhasil disimpan ke database.')
+}
+
+function tanggalLokalUntukNilai() {
+  const sekarang = new Date()
+  const tahun = sekarang.getFullYear()
+  const bulan = String(sekarang.getMonth() + 1).padStart(2, '0')
+  const hari = String(sekarang.getDate()).padStart(2, '0')
+  return `${tahun}-${bulan}-${hari}`
 }
 
 function bukaInput() {
@@ -136,6 +308,7 @@ function bukaInput() {
   form.value = {
     nisn: '',
     name: '',
+    jenisTugas: 'praktik',
     nilai: ''
   }
   modalTerbuka.value = true
@@ -143,41 +316,67 @@ function bukaInput() {
 
 function editNilai(item) {
   modeEdit.value = true
+  const jenisTugas = item.tugasDipilih || 'praktik'
+
   form.value = {
     nisn: item.nisn,
     name: item.name,
-    nilai: item.nilai
+    jenisTugas,
+    nilai: jenisTugas === 'praktik' ? item.nilaiPraktik : item.nilaiTertulis
   }
+
   modalTerbuka.value = true
 }
 
-function simpanNilai() {
-  const nilai = Number(form.value.nilai)
+watch(
+  () => form.value.jenisTugas,
+  jenisTugas => {
+    const item = siswa.value.find(siswaItem => siswaItem.nisn === form.value.nisn)
+    if (!item) return
 
-  if (
-    form.value.nilai === '' ||
-    !Number.isFinite(nilai) ||
-    nilai < 0 ||
-    nilai > 100
-  ) {
-    tampilkanToast('Masukkan nilai antara 0 sampai 100.')
+    form.value.nilai = jenisTugas === 'praktik'
+      ? item.nilaiPraktik
+      : item.nilaiTertulis
+  }
+)
+
+async function simpanNilai() {
+  if (form.value.nisn === '' || form.value.nilai === '') {
+    tampilkanToast('Pilih siswa dan masukkan nilai.')
     return
   }
 
-  const index = siswa.value.findIndex(
-    item => item.nisn === form.value.nisn
-  )
+  const angka = Number(form.value.nilai)
+  if (!Number.isInteger(angka) || angka < 0 || angka > 100) {
+    tampilkanToast('Pilih nilai antara 0 sampai 100.')
+    return
+  }
 
-  if (index === -1) {
+  const item = siswa.value.find(siswaItem => siswaItem.nisn === form.value.nisn)
+  if (!item) {
     tampilkanToast('Siswa tidak ditemukan.')
     return
   }
 
-  siswa.value[index].nilai = nilai
+  menyimpanNilai.value = true
+  try {
+    const jenisTugas = form.value.jenisTugas
+    const berhasil = await simpanKeDatabase(item, jenisTugas, angka)
+    if (!berhasil) return
 
-  if (simpanKeBrowser()) {
+    if (jenisTugas === 'praktik') {
+      item.nilaiPraktik = angka
+      item.tanggalPraktik = tanggalLokalUntukNilai()
+    } else {
+      item.nilaiTertulis = angka
+      item.tanggalTertulis = tanggalLokalUntukNilai()
+    }
+
+    item.tugasDipilih = jenisTugas
     modalTerbuka.value = false
-    tampilkanToast('Nilai berhasil disimpan.')
+    tampilkanToast('Nilai berhasil disimpan ke database.')
+  } finally {
+    menyimpanNilai.value = false
   }
 }
 
@@ -189,42 +388,38 @@ function unduhRekap() {
   const kolom = [
     'NISN',
     'Nama Siswa',
-    'Mata Pelajaran',
-    'Nilai',
-    'Grade'
+    'Nilai Praktik',
+    'Nilai Tertulis',
+    'Nilai Overall',
+    'Grade Overall'
   ]
 
   const baris = siswa.value.map(item => [
     item.nisn,
     item.name,
-    mataPelajaran,
-    item.nilai,
-    grade(item.nilai)
+    item.nilaiPraktik,
+    item.nilaiTertulis,
+    nilaiOverall(item) ?? '',
+    gradeOverall(item) || '-'
   ])
 
   const escapeCSV = value =>
     `"${String(value ?? '').replace(/"/g, '""')}"`
 
-  const csv = [
-    kolom,
-    ...baris
-  ].map(row => row.map(escapeCSV).join(',')).join('\r\n')
+  const csv = [kolom, ...baris]
+    .map(row => row.map(escapeCSV).join(','))
+    .join('\r\n')
 
-  const blob = new Blob(['\uFEFF' + csv], {
-    type: 'text/csv;charset=utf-8;'
-  })
-
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
-
   link.href = url
   link.download = 'nilai-olahraga-dan-keterampilan.csv'
   link.click()
-
   URL.revokeObjectURL(url)
+
   tampilkanToast('Rekap nilai berhasil diunduh.')
 }
-
 </script>
 
 <template>
@@ -250,7 +445,6 @@ function unduhRekap() {
               })
             }}
           </div>
-
           <button class="btn primary" @click="bukaInput">
             + Input Nilai
           </button>
@@ -286,7 +480,6 @@ function unduhRekap() {
       <section class="card table-card">
         <div class="table-heading">
           <h2>Daftar Nilai Siswa</h2>
-
           <input
             v-model="pencarian"
             class="search-input"
@@ -296,13 +489,15 @@ function unduhRekap() {
           />
         </div>
 
+        <p v-if="loading" class="table-message">Memuat data siswa dan nilai...</p>
+
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>No.</th>
                 <th>Nama Siswa</th>
-                <th>Mata Pelajaran</th>
+                <th>Tugas</th>
                 <th>Nilai</th>
                 <th>Grade</th>
                 <th>Aksi</th>
@@ -313,32 +508,41 @@ function unduhRekap() {
               <tr v-for="(item, index) in daftarSiswa" :key="item.nisn">
                 <td>{{ index + 1 }}</td>
                 <td class="student-name">{{ item.name }}</td>
-                <td>{{ mataPelajaran }}</td>
-                <td class="score">
-                     {{ item.nilai === '' || item.nilai == null ? '-' : item.nilai }}
-                </td>
-                    <td>
-                    <span
-                        v-if="item.nilai !== '' && item.nilai != null"
-                        class="grade-badge"
-                        :class="'grade-' + item.grade">{{ item.grade }}
-                    </span>
-                    <span v-else>-</span>
-                    </td>
+
                 <td>
-                  <button
-                    class="edit-button"
-                    @click="editNilai(item)"
+                  <select
+                    :value="item.tugasDipilih || 'praktik'"
+                    class="table-select"
+                    aria-label="Pilih jenis tugas"
+                    @change="ubahJenisTugas(item, $event.target.value)"
                   >
+                    <option value="praktik">Tugas Praktik</option>
+                    <option value="tertulis">Tugas Tertulis</option>
+                  </select>
+                </td>
+
+                <td class="score">{{ nilaiBerdasarkanTugas(item) }}</td>
+
+                <td>
+                  <span
+                    v-if="item.grade"
+                    class="grade-badge"
+                    :class="'grade-' + item.grade.toLowerCase()"
+                  >
+                    {{ item.grade }}
+                  </span>
+                  <span v-else>-</span>
+                </td>
+
+                <td>
+                  <button class="edit-button" @click="editNilai(item)">
                     Edit
                   </button>
                 </td>
               </tr>
 
               <tr v-if="daftarSiswa.length === 0">
-                <td colspan="6" class="empty-state">
-                  Siswa tidak ditemukan.
-                </td>
+                <td colspan="6" class="empty-state">Siswa tidak ditemukan.</td>
               </tr>
             </tbody>
           </table>
@@ -353,12 +557,8 @@ function unduhRekap() {
         </p>
 
         <div class="footer-actions">
-          <button class="btn secondary" @click="unduhRekap">
-            ↓ Unduh Rekap
-          </button>
-          <button class="btn primary" @click="cetakNilai">
-            Cetak
-          </button>
+          <button class="btn secondary" @click="unduhRekap">↓ Unduh Rekap</button>
+          <button class="btn primary" @click="cetakNilai">Cetak</button>
         </div>
       </section>
     </main>
@@ -367,11 +567,7 @@ function unduhRekap() {
       <section class="modal-card">
         <div class="modal-heading">
           <h2>{{ modeEdit ? 'Edit Nilai Siswa' : 'Input Nilai' }}</h2>
-          <button
-            class="close-button"
-            aria-label="Tutup"
-            @click="modalTerbuka = false"
-          >
+          <button class="close-button" aria-label="Tutup" @click="modalTerbuka = false">
             ×
           </button>
         </div>
@@ -388,47 +584,42 @@ function unduhRekap() {
             @change="form.name = siswa.find(item => item.nisn === form.nisn)?.name || ''"
           >
             <option value="" disabled>Pilih siswa</option>
-            <option
-              v-for="item in siswa"
-              :key="item.nisn"
-              :value="item.nisn"
-            >
+            <option v-for="item in siswa" :key="item.nisn" :value="item.nisn">
               {{ item.name }}
             </option>
           </select>
 
-          <label for="nilaiSiswa">Nilai (0–100)</label>
-          <input
-            id="nilaiSiswa"
-            v-model="form.nilai"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            required
-            placeholder="Masukkan nilai"
-          />
+          <label for="jenisTugas">Jenis Tugas</label>
+          <select id="jenisTugas" v-model="form.jenisTugas" required>
+            <option value="praktik">Tugas Praktik</option>
+            <option value="tertulis">Tugas Tertulis</option>
+          </select>
 
-          <div v-if="form.nilai !== ''" class="grade-preview">
-            Grade yang diperoleh:
-            <span
-              class="grade-badge"
-              :class="'grade-' + grade(form.nilai)"
-            >
-              {{ grade(form.nilai) }}
+          <label for="nilaiSiswa">Nilai (0–100)</label>
+          <select id="nilaiSiswa" v-model="form.nilai" required>
+            <option value="" disabled>Pilih nilai</option>
+            <option v-for="nilai in pilihanNilai" :key="nilai" :value="nilai">
+              {{ nilai }}
+            </option>
+          </select>
+
+          <div v-if="overallPreview() !== null" class="grade-preview">
+            Nilai overall: <strong>{{ overallPreview() }}</strong>
+            <span>· Grade:</span>
+            <span class="grade-badge" :class="'grade-' + gradePreview().toLowerCase()">
+              {{ gradePreview() }}
             </span>
           </div>
+          <p v-else class="grade-preview">
+            Grade akan dihitung setelah nilai Tugas Praktik dan Tugas Tertulis terisi.
+          </p>
 
           <div class="modal-actions">
-            <button
-              type="button"
-              class="btn secondary"
-              @click="modalTerbuka = false"
-            >
+            <button type="button" class="btn secondary" @click="modalTerbuka = false">
               Batal
             </button>
-            <button type="submit" class="btn primary">
-              Simpan Nilai
+            <button type="submit" class="btn primary" :disabled="menyimpanNilai">
+              {{ menyimpanNilai ? 'Menyimpan...' : 'Simpan Nilai' }}
             </button>
           </div>
         </form>
@@ -503,19 +694,10 @@ function unduhRekap() {
   transition: opacity 0.2s;
 }
 
-.btn:hover {
-  opacity: 0.88;
-}
-
-.primary {
-  background: #2196f3;
-  color: white;
-}
-
-.secondary {
-  background: #edf0f3;
-  color: var(--navy, #1e3a5f);
-}
+.btn:hover { opacity: 0.88; }
+.btn:disabled { opacity: 0.6; cursor: wait; }
+.primary { background: #2196f3; color: white; }
+.secondary { background: #edf0f3; color: var(--navy, #1e3a5f); }
 
 .summary-grid {
   display: grid;
@@ -558,20 +740,9 @@ function unduhRekap() {
   font-size: 25px;
 }
 
-.blue-icon {
-  background: #e1efff;
-  color: #2196f3;
-}
-
-.orange-icon {
-  background: #fff0d5;
-  color: #d99018;
-}
-
-.green-icon {
-  background: #e0f1e8;
-  color: #4f8068;
-}
+.blue-icon { background: #e1efff; color: #2196f3; }
+.orange-icon { background: #fff0d5; color: #d99018; }
+.green-icon { background: #e0f1e8; color: #4f8068; }
 
 .card {
   background: var(--card, #fff);
@@ -580,9 +751,7 @@ function unduhRekap() {
   box-shadow: 0 2px 5px #1e3a5f0a;
 }
 
-.table-card {
-  padding: 20px;
-}
+.table-card { padding: 20px; }
 
 .table-heading {
   display: flex;
@@ -609,10 +778,13 @@ function unduhRekap() {
   outline-color: #2196f3;
 }
 
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
+.table-message {
+  margin: 0 0 12px;
+  color: var(--muted, #747a80);
+  font-size: 13px;
 }
+
+.table-wrap { width: 100%; overflow-x: auto; }
 
 table {
   width: 100%;
@@ -621,8 +793,7 @@ table {
   font-size: 14px;
 }
 
-th,
-td {
+th, td {
   padding: 13px 15px;
   text-align: left;
   border-bottom: 1px solid #e5e9ed;
@@ -635,31 +806,31 @@ th {
   white-space: nowrap;
 }
 
-thead th:first-child {
-  border-top-left-radius: 7px;
-}
-
-thead th:last-child {
-  border-top-right-radius: 7px;
-}
-
-tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-tbody tr:hover {
-  background: #f8fbff;
-}
+thead th:first-child { border-top-left-radius: 7px; }
+thead th:last-child { border-top-right-radius: 7px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #f8fbff; }
 
 .student-name {
-  font-weight: 600;
-  color: var(--navy, #1e3a5f);
+  font-weight: 500;
+  color: #000000;
   white-space: nowrap;
 }
 
 .score {
   font-weight: 700;
   color: var(--navy, #1e3a5f);
+}
+
+.table-select {
+  max-width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--border, #dfe2dc);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text, #2e3136);
+  font: inherit;
+  cursor: pointer;
 }
 
 .grade-badge {
@@ -672,25 +843,10 @@ tbody tr:hover {
   font-weight: 700;
 }
 
-.grade-a {
-  background: #d5eee1;
-  color: #286b50;
-}
-
-.grade-b {
-  background: #dcecff;
-  color: #285e9c;
-}
-
-.grade-c {
-  background: #ffe6b9;
-  color: #925c0b;
-}
-
-.grade-d {
-  background: #f5d9d7;
-  color: #9c3833;
-}
+.grade-a { background: #d5eee1; color: #286b50; }
+.grade-b { background: #dcecff; color: #285e9c; }
+.grade-c { background: #ffe6b9; color: #925c0b; }
+.grade-d { background: #f5d9d7; color: #9c3833; }
 
 .grade-info {
   margin: 17px 0 0;
@@ -715,9 +871,7 @@ tbody tr:hover {
   cursor: pointer;
 }
 
-.edit-button:hover {
-  text-decoration: underline;
-}
+.edit-button:hover { text-decoration: underline; }
 
 .empty-state {
   padding: 28px;
@@ -777,11 +931,7 @@ tbody tr:hover {
   color: var(--muted, #747a80);
 }
 
-.modal-card form {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
+.modal-card form { display: flex; flex-direction: column; gap: 9px; }
 
 .modal-card label {
   margin-top: 8px;
@@ -830,101 +980,33 @@ tbody tr:hover {
 }
 
 @media (max-width: 900px) {
-  .main {
-    padding: 22px 18px;
-  }
-
-  .page-head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .header-actions {
-    flex-wrap: wrap;
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
+  .main { padding: 22px 18px; }
+  .page-head { align-items: flex-start; flex-direction: column; }
+  .header-actions { flex-wrap: wrap; }
+  .summary-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
-  .main {
-    padding: 16px 12px;
-  }
-
-  .page-head h1 {
-    font-size: 25px;
-  }
-
-  .header-actions {
-    width: 100%;
-  }
-
-  .date-badge {
-    font-size: 12px;
-  }
-
-  .table-card {
-    padding: 13px;
-  }
-
-  .table-heading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .search-input {
-    width: auto;
-  }
-
-  th,
-  td {
-    padding: 11px 12px;
-    white-space: nowrap;
-  }
+  .main { padding: 16px 12px; }
+  .page-head h1 { font-size: 25px; }
+  .header-actions { width: 100%; }
+  .date-badge { font-size: 12px; }
+  .table-card { padding: 13px; }
+  .table-heading { align-items: stretch; flex-direction: column; }
+  .search-input { width: auto; }
+  th, td { padding: 11px 12px; white-space: nowrap; }
 }
 
 @media print {
-  .app-shell {
-    display: block;
-    background: white;
-  }
-
-  .main {
-    padding: 0;
-  }
-
-  .header-actions,
-  .search-input,
-  .footer-actions,
-  .edit-button,
-  .modal-overlay,
-  .toast {
+  .app-shell { display: block; background: white; }
+  .main { padding: 0; }
+  .header-actions, .search-input, .footer-actions, .edit-button, .modal-overlay, .toast {
     display: none !important;
   }
-
-  .summary-card,
-  .card {
-    box-shadow: none;
-    break-inside: avoid;
-  }
-
-  .table-card {
-    padding: 10px 0;
-  }
-
-  .table-wrap {
-    overflow: visible;
-  }
-
-  table {
-    font-size: 11px;
-  }
-
-  th,
-  td {
-    padding: 8px;
-  }
+  .summary-card, .card { box-shadow: none; break-inside: avoid; }
+  .table-card { padding: 10px 0; }
+  .table-wrap { overflow: visible; }
+  table { font-size: 11px; }
+  th, td { padding: 8px; }
 }
 </style>
