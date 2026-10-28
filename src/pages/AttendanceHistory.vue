@@ -9,7 +9,7 @@ import {
 
 import Sidebar from '../components/Sidebar.vue'
 
-const SISWA_API_URL = 'https://portalabsensi.free.nf/siswa.php'
+const SISWA_API_URL = 'https://portalabsensi.free.nf/';
 fetch(`${API_URL}siswa.php`)
   .then(response => {
     if (!response.ok) {
@@ -24,7 +24,7 @@ fetch(`${API_URL}siswa.php`)
     console.error('Gagal memuat data siswa:', error);
   });
 
-const ABSEN_API_URL = 'https://portalabsensi.free.nf/absen.php'
+const ABSEN_API_URL = 'https://portalabsensi.free.nf/';
 fetch(`${API_URL}absen.php`)
   .then(response => {
     if (!response.ok) {
