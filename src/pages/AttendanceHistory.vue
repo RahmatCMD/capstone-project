@@ -9,9 +9,9 @@ import {
 
 import Sidebar from '../components/Sidebar.vue'
 
-const SISWA_API_URL = 'https://portalabsensi.free.nf/siswa.php'
+const SISWA_API_URL = 'http://localhost/absensi-api/siswa.php'
 
-const ABSEN_API_URL = 'https://portalabsensi.free.nf/absen.php'
+const ABSEN_API_URL = 'http://localhost/absensi-api/absen.php'
 
 const semuaSiswa = ref([])
 const semuaAbsensi = ref([])
