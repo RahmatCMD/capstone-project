@@ -293,16 +293,6 @@ function show(message) {
       <h1>Rekap absensi Nadia Putri</h1>
       <p>Kelas 4 {{ today }}</p>
     </div>
-
-    <div class="actions">
-      <button class="btn">{{ currentDate }}</button>
-      <button
-        class="btn primary"
-        @click="router.push('/guru/absensi')"
-      >
-        + Input Absensi Hari Ini
-      </button>
-    </div>
   </div>
 
   <!-- Statistik absensi -->
