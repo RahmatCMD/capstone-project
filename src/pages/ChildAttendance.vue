@@ -1,14 +1,12 @@
 <script setup>
 import { computed, ref, onMounted, onActivated, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import Sidebar from '../components/Sidebar.vue'
-
-const router = useRouter()
-const toast = ref('')
 
 // API PHP
 const ABSEN_API_URL = 'http://localhost/absensi-api/absen.php'
 const SISWA_API_URL = 'http://localhost/absensi-api/siswa.php'
+
+const toast = ref('')
 
 // ================================
 // TANGGAL DAN KALENDER
@@ -17,7 +15,6 @@ function formatTanggal(date) {
   const tahun = date.getFullYear()
   const bulan = String(date.getMonth() + 1).padStart(2, '0')
   const hari = String(date.getDate()).padStart(2, '0')
-
   return `${tahun}-${bulan}-${hari}`
 }
 
@@ -43,12 +40,9 @@ const currentDate = computed(() =>
   })
 )
 
-// Bulan yang sedang ditampilkan pada kalender
 const bulanDitampilkan = ref(
   new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 )
-
-// Tanggal yang dipilih
 const tanggalDipilih = ref(tanggalSekarang())
 
 const namaBulan = computed(() =>
@@ -58,24 +52,16 @@ const namaBulan = computed(() =>
   })
 )
 
-const namaHari = [
-  'Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'
-]
+const namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
-// Membuat kotak kalender berdasarkan bulan aktif
 const kalender = computed(() => {
   const tahun = bulanDitampilkan.value.getFullYear()
   const bulan = bulanDitampilkan.value.getMonth()
-
   const hariPertama = new Date(tahun, bulan, 1).getDay()
   const jumlahHari = new Date(tahun, bulan + 1, 0).getDate()
-
   const tanggal = []
 
-  // Kotak kosong sebelum tanggal 1
-  for (let i = 0; i < hariPertama; i++) {
-    tanggal.push(null)
-  }
+  for (let i = 0; i < hariPertama; i++) tanggal.push(null)
 
   for (let hari = 1; hari <= jumlahHari; hari++) {
     tanggal.push(formatTanggal(new Date(tahun, bulan, hari)))
@@ -90,11 +76,8 @@ function ubahBulan(jumlah) {
     bulanDitampilkan.value.getMonth() + jumlah,
     1
   )
-
   bulanDitampilkan.value = baru
 
-  // Pilih tanggal yang sama jika tersedia pada bulan baru.
-  // Jika tidak, pilih tanggal pertama bulan tersebut.
   const hariLama = Number(tanggalDipilih.value.slice(-2))
   const hariAkhir = new Date(
     baru.getFullYear(),
@@ -102,45 +85,43 @@ function ubahBulan(jumlah) {
     0
   ).getDate()
 
-  const hariBaru = Math.min(hariLama || 1, hariAkhir)
-
   tanggalDipilih.value = formatTanggal(
-    new Date(baru.getFullYear(), baru.getMonth(), hariBaru)
+    new Date(baru.getFullYear(), baru.getMonth(), Math.min(hariLama || 1, hariAkhir))
   )
 }
 
 function pilihTanggal(tanggal) {
-  if (!tanggal) return
-  tanggalDipilih.value = tanggal
+  if (tanggal) tanggalDipilih.value = tanggal
 }
 
 // ================================
 // DATA ABSENSI DARI DATABASE
 // ================================
 const dataSiswa = ref([])
+const dataAbsensiBulan = ref([])
 const loading = ref(false)
 const errorApi = ref('')
 
-// ================================
-// DATA ABSENSI DARI DATABASE
-// ================================
-const dataAbsensiBulan = ref([])
+const siswaNadia = computed(() =>
+  dataSiswa.value.find(siswa =>
+    String(siswa.nama_siswa || siswa.nama || '').trim().toLowerCase() === 'nadia putri'
+  )
+)
 
 const absensiNadia = computed(() => {
-  if (!siswaNadia.value) return []
+  if (!siswaNadia.value) {
+    // Fallback berdasarkan nama bila data siswa belum memiliki ID yang cocok.
+    return dataAbsensiBulan.value.filter(item =>
+      String(item.nama_siswa || item.nama || '').trim().toLowerCase() === 'nadia putri'
+    )
+  }
 
   return dataAbsensiBulan.value.filter(item => {
-    if (
-      item.id_siswa != null &&
-      siswaNadia.value.id_siswa != null
-    ) {
-      return String(item.id_siswa) ===
-        String(siswaNadia.value.id_siswa)
+    if (item.id_siswa != null && siswaNadia.value.id_siswa != null) {
+      return String(item.id_siswa) === String(siswaNadia.value.id_siswa)
     }
 
-    return String(item.nama_siswa || item.nama || '')
-      .trim()
-      .toLowerCase() === 'nadia putri'
+    return String(item.nama_siswa || item.nama || '').trim().toLowerCase() === 'nadia putri'
   })
 })
 
@@ -149,9 +130,7 @@ async function muatAbsensiBulan() {
   errorApi.value = ''
 
   const tahun = bulanDitampilkan.value.getFullYear()
-  const bulan = String(
-    bulanDitampilkan.value.getMonth() + 1
-  ).padStart(2, '0')
+  const bulan = String(bulanDitampilkan.value.getMonth() + 1).padStart(2, '0')
 
   try {
     const [responseSiswa, responseAbsen] = await Promise.all([
@@ -166,26 +145,15 @@ async function muatAbsensiBulan() {
     const resultSiswa = await responseSiswa.json()
     const resultAbsen = await responseAbsen.json()
 
-    if (
-      resultSiswa.success === false ||
-      resultAbsen.success === false
-    ) {
+    if (resultSiswa.success === false || resultAbsen.success === false) {
       throw new Error('API mengembalikan kesalahan.')
     }
 
-    dataSiswa.value = Array.isArray(resultSiswa.data)
-      ? resultSiswa.data
-      : []
-
-    dataAbsensiBulan.value = Array.isArray(resultAbsen.data)
-      ? resultAbsen.data
-      : []
+    dataSiswa.value = Array.isArray(resultSiswa.data) ? resultSiswa.data : []
+    dataAbsensiBulan.value = Array.isArray(resultAbsen.data) ? resultAbsen.data : []
   } catch (error) {
     console.error('Gagal memuat data absensi:', error)
-
-    errorApi.value =
-      'Data belum dapat dimuat. Periksa Apache, MySQL, dan API PHP.'
-
+    errorApi.value = 'Data belum dapat dimuat. Periksa Apache, MySQL, dan API PHP.'
     dataSiswa.value = []
     dataAbsensiBulan.value = []
   } finally {
@@ -193,130 +161,35 @@ async function muatAbsensiBulan() {
   }
 }
 
-// Muat ulang data ketika bulan berubah
 watch(bulanDitampilkan, () => {
   muatAbsensiBulan()
 })
 
-// Ambil data nadia putri
-const absensiHariIni = computed(() => {
-  return absensiNadia.value.filter(
-    item =>
-      String(item.tanggal).slice(0, 10) ===
-      tanggalDipilih.value
-  )
-})
-
-// Tanggal mana saja yang memiliki data absensi nadia
-const tanggalMemilikiAbsensi = computed(() => {
-  return new Set(
-    absensiNadia.value.map(
-      item => String(item.tanggal).slice(0, 10)
-    )
-  )
-})
-
-// status absensi nadia putri
-const siswaNadia = computed(() => {
-  return dataSiswa.value.find(siswa =>
-    String(siswa.nama_siswa || '')
-      .trim()
-      .toLowerCase() === 'nadia putri'
-  )
-})
-
-const riwayatAbsensiNadia = computed(() => {
-  return [...absensiNadia.value].sort((a, b) =>
-    String(a.tanggal || '').localeCompare(
-      String(b.tanggal || '')
-    )
-  )
-})
-<<<<<<< HEAD
-
-// Status absensi yang tercatat pada setiap tanggal
-const statusAbsensiTanggal = computed(() => {
-  const hasil = {}
-
-  absensiNadia.value.forEach(item => {
-    const tanggal = String(item.tanggal || '').slice(0, 10)
-    const status = String(item.status || '').trim().toLowerCase()
-
-    if (!tanggal) return
-
-    if (!hasil[tanggal]) {
-      hasil[tanggal] = []
-    }
-
-    if (
-      ['hadir', 'sakit', 'izin', 'alpha'].includes(status) &&
-      !hasil[tanggal].includes(status)
-    ) {
-      hasil[tanggal].push(status)
-    }
-  })
-
-  return hasil
-})
-
-const tanggalDipilihFormat = computed(() =>
-  new Date(`${tanggalDipilih.value}T12:00:00`).toLocaleDateString(
-    'id-ID',
-    {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    }
+const absensiHariIni = computed(() =>
+  absensiNadia.value.filter(
+    item => String(item.tanggal || '').slice(0, 10) === tanggalDipilih.value
   )
 )
 
-// ================================
-// SIKLUS HALAMAN
-// ================================
-onMounted(() => {
-  muatAbsensiBulan()
-  window.addEventListener('focus', muatAbsensiBulan)
-})
+const tanggalMemilikiAbsensi = computed(() =>
+  new Set(absensiNadia.value.map(item => String(item.tanggal || '').slice(0, 10)))
+)
 
-onActivated(() => {
-  muatAbsensiBulan()
-})
+const riwayatAbsensiNadia = computed(() =>
+  [...absensiNadia.value].sort((a, b) =>
+    String(a.tanggal || '').localeCompare(String(b.tanggal || ''))
+  )
+)
 
-onUnmounted(() => {
-  window.removeEventListener('focus', muatAbsensiBulan)
-})
-
-// ================================
-// CETAK RIWAYAT ABSENSI
-// ================================
-function cetakAbsensi() {
-  if (loading.value || errorApi.value) {
-    show('Data absensi belum siap dicetak.')
-    return
-  }
-
-  if (riwayatAbsensiNadia.value.length === 0) {
-    show('Belum ada data absensi untuk dicetak.')
-    return
-  }
-
-  window.print()
-=======
-
-// Status absensi yang tercatat pada setiap tanggal
 const statusAbsensiTanggal = computed(() => {
   const hasil = {}
 
   absensiNadia.value.forEach(item => {
     const tanggal = String(item.tanggal || '').slice(0, 10)
     const status = String(item.status || '').trim().toLowerCase()
-
     if (!tanggal) return
 
-    if (!hasil[tanggal]) {
-      hasil[tanggal] = []
-    }
+    if (!hasil[tanggal]) hasil[tanggal] = []
 
     if (
       ['hadir', 'sakit', 'izin', 'alpha'].includes(status) &&
@@ -330,15 +203,12 @@ const statusAbsensiTanggal = computed(() => {
 })
 
 const tanggalDipilihFormat = computed(() =>
-  new Date(`${tanggalDipilih.value}T12:00:00`).toLocaleDateString(
-    'id-ID',
-    {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    }
-  )
+  new Date(`${tanggalDipilih.value}T12:00:00`).toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  })
 )
 
 // ================================
@@ -362,7 +232,23 @@ function show(message) {
   setTimeout(() => {
     toast.value = ''
   }, 2200)
->>>>>>> 27d2e2232c5995ca2aafad46d33b3146fb047817
+}
+
+// ================================
+// CETAK RIWAYAT ABSENSI
+// ================================
+function cetakAbsensi() {
+  if (loading.value || errorApi.value) {
+    show('Data absensi belum siap dicetak.')
+    return
+  }
+
+  if (riwayatAbsensiNadia.value.length === 0) {
+    show('Belum ada data absensi untuk dicetak.')
+    return
+  }
+
+  window.print()
 }
 
 // ================================
@@ -384,14 +270,7 @@ function unduhCSV() {
     return
   }
 
-  const kolom = [
-    'No.',
-    'Nama Siswa',
-    'Tanggal',
-    'Status Kehadiran',
-    'Catatan'
-  ]
-
+  const kolom = ['No.', 'Nama Siswa', 'Tanggal', 'Status Kehadiran', 'Catatan']
   const barisData = riwayatAbsensiNadia.value.map((item, index) => [
     index + 1,
     item.nama_siswa || item.nama || 'Nadia Putri',
@@ -400,35 +279,22 @@ function unduhCSV() {
     item.catatan || '-'
   ])
 
-  // Mengamankan tanda kutip dan pemisah dalam data
-  const escapeCSV = nilai =>
-    `"${String(nilai ?? '').replace(/"/g, '""')}"`
-
+  const escapeCSV = nilai => `"${String(nilai ?? '').replace(/"/g, '""')}"`
   const isiCSV = [kolom, ...barisData]
     .map(baris => baris.map(escapeCSV).join(';'))
     .join('\r\n')
 
-  // BOM agar karakter Bahasa Indonesia terbaca dengan baik
-  const blob = new Blob(
-    ['\uFEFF' + isiCSV],
-    { type: 'text/csv;charset=utf-8;' }
-  )
-
+  const blob = new Blob(['\uFEFF' + isiCSV], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
-
   const tahun = bulanDitampilkan.value.getFullYear()
-  const bulan = String(
-    bulanDitampilkan.value.getMonth() + 1
-  ).padStart(2, '0')
+  const bulan = String(bulanDitampilkan.value.getMonth() + 1).padStart(2, '0')
 
   link.href = url
   link.download = `Rekap_Absensi_Nadia_Putri_${tahun}-${bulan}.csv`
-
   document.body.appendChild(link)
   link.click()
   link.remove()
-
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 
   show('File CSV berhasil diunduh.')
@@ -439,191 +305,150 @@ function unduhCSV() {
   <div class="app-shell">
     <Sidebar role="ortu" />
 
-    
-<main class="main">
-  <div class="page-head">
-    <div>
-      <h1>Rekap absensi Nadia Putri</h1>
-      <p>Kelas 4 {{ today }}</p>
-    </div>
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <h1>Rekap absensi Nadia Putri</h1>
+          <p>Kelas 4 · {{ today }}</p>
+        </div>
 
-    <div class="actions">
-<<<<<<< HEAD
-        <button class="btn">
-          {{ currentDate }}
-        </button>
+        <div class="actions">
+          <button class="btn">{{ currentDate }}</button>
 
-      <button
-    class="btn btn-cetak"
-    @click="cetakAbsensi"
-    :disabled="loading || riwayatAbsensiNadia.length === 0"
-      >
-    Cetak
-      </button>
-
-      <button
-    class="btn primary btn-unduh"
-    @click="unduhCSV"
-    :disabled="loading || !!errorApi || riwayatAbsensiNadia.length === 0"
-      >
-      Unduh CSV
-=======
-      <button class="btn">{{ currentDate }}</button>
-      <button
-        class="btn primary"
-        @click="router.push('/guru/absensi')"
-      >
-        + Input Absensi Hari Ini
->>>>>>> 27d2e2232c5995ca2aafad46d33b3146fb047817
-      </button>
-    </div>
-  </div>
-
-  <!-- KALENDER ABSENSI -->
-  <section class="card calendar-card">
-    <div class="section-heading">
-      <div>
-        <h2>Kalender Absensi</h2>
-        <p>Pilih tanggal untuk melihat data kehadiran siswa.</p>
-      </div>
-
-      <div class="calendar-navigation">
-        <button
-          class="calendar-nav-btn"
-          aria-label="Bulan sebelumnya"
-          @click="ubahBulan(-1)"
-        >
-          ‹
-        </button>
-
-        <strong>{{ namaBulan }}</strong>
-
-        <button
-          class="calendar-nav-btn"
-          aria-label="Bulan berikutnya"
-          @click="ubahBulan(1)"
-        >
-          ›
-        </button>
-      </div>
-    </div>
-
-    <div class="calendar-grid">
-      <div
-        v-for="hari in namaHari"
-        :key="hari"
-        class="calendar-weekday"
-      >
-        {{ hari }}
-      </div>
-
-      <template v-for="(tanggal, index) in kalender" :key="index">
-        <div v-if="!tanggal" class="calendar-empty"></div>
-
-        <button
-            v-else
-            class="calendar-day"
-            :class="[
-          {
-            selected: tanggal === tanggalDipilih,
-            'is-today': tanggal === tanggalSekarang()
-          },
-            ...(statusAbsensiTanggal[tanggal] || []).map(
-            status => `status-${status}`
-          )
-        ]"
-          @click="pilihTanggal(tanggal)"
+          <button
+            class="btn btn-cetak"
+            @click="cetakAbsensi"
+            :disabled="loading || riwayatAbsensiNadia.length === 0"
           >
-          <span>{{ Number(tanggal.slice(-2)) }}</span>
+            Cetak
           </button>
-      </template>
-    </div>
-  </section>
 
-  <!-- DAFTAR ABSEN NADIA PUTRI BERDASARKAN TANGGAL -->
-  <section class="card attendance-list-card">
-  <div class="section-heading">
-    <div>
-      <h2>Data Absensi Nadia Putri</h2>
-      <p>{{ namaBulan }}</p>
-    </div>
+          <button
+            class="btn primary btn-unduh"
+            @click="unduhCSV"
+            :disabled="loading || !!errorApi || riwayatAbsensiNadia.length === 0"
+          >
+            Unduh CSV
+          </button>
+        </div>
+      </div>
 
-    <span class="attendance-count">
-      {{ riwayatAbsensiNadia.length }} data
-    </span>
-  </div>
+      <section class="card calendar-card">
+        <div class="section-heading">
+          <div>
+            <h2>Kalender Absensi</h2>
+            <p>Pilih tanggal untuk melihat data kehadiran siswa.</p>
+          </div>
 
-  <div v-if="loading" class="empty-state">
-    Memuat riwayat absensi...
-  </div>
+          <div class="calendar-navigation">
+            <button class="calendar-nav-btn" aria-label="Bulan sebelumnya" @click="ubahBulan(-1)">
+              ‹
+            </button>
+            <strong>{{ namaBulan }}</strong>
+            <button class="calendar-nav-btn" aria-label="Bulan berikutnya" @click="ubahBulan(1)">
+              ›
+            </button>
+          </div>
+        </div>
 
-  <div v-else-if="errorApi" class="empty-state error-state">
-    {{ errorApi }}
+        <div class="calendar-grid">
+          <div v-for="hari in namaHari" :key="hari" class="calendar-weekday">
+            {{ hari }}
+          </div>
 
-    <button class="btn primary" @click="muatAbsensiBulan">
-      Coba Lagi
-    </button>
-  </div>
+          <template v-for="(tanggal, index) in kalender" :key="index">
+            <div v-if="!tanggal" class="calendar-empty"></div>
 
-  <div
-    v-else-if="riwayatAbsensiNadia.length === 0"
-    class="empty-state"
-  >
-    Belum ada catatan absensi Nadia Putri pada bulan ini.
-  </div>
-
-  <div v-else class="table-wrapper">
-    <table class="attendance-table">
-      <thead>
-        <tr>
-          <th>No.</th>
-          <th>Nama Siswa</th>
-          <th>Tanggal</th>
-          <th>Status</th>
-          <th>Catatan</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr
-          v-for="(siswa, index) in riwayatAbsensiNadia"
-          :key="`${siswa.id_absen || siswa.id_siswa || 'nadia'}-${siswa.tanggal}-${index}`"
-        >
-          <td>{{ index + 1 }}</td>
-
-          <td>
-            {{ siswa.nama_siswa || siswa.nama || 'Nadia Putri' }}
-          </td>
-
-          <td>
-            {{
-              new Date(
-                `${String(siswa.tanggal).slice(0, 10)}T12:00:00`
-              ).toLocaleDateString('id-ID', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              })
-            }}
-          </td>
-
-          <td>
-            <span
-              class="status-label"
-              :class="String(siswa.status || '').toLowerCase()"
+            <button
+              v-else
+              class="calendar-day"
+              :class="[
+                {
+                  selected: tanggal === tanggalDipilih,
+                  'is-today': tanggal === tanggalSekarang()
+                },
+                ...(statusAbsensiTanggal[tanggal] || []).map(status => `status-${status}`)
+              ]"
+              @click="pilihTanggal(tanggal)"
             >
-              {{ siswa.status || '-' }}
-            </span>
-          </td>
+              <span>{{ Number(tanggal.slice(-2)) }}</span>
+            </button>
+          </template>
+        </div>
 
-          <td>{{ siswa.catatan || '-' }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-</main>
+        <div class="calendar-legend">
+          <span><i class="legend-status hadir"></i> Hadir</span>
+          <span><i class="legend-status sakit"></i> Sakit</span>
+          <span><i class="legend-status izin"></i> Izin</span>
+          <span><i class="legend-status alpha"></i> Alpha</span>
+          <span><i class="legend-today"></i> Hari ini</span>
+        </div>
+      </section>
 
+      <section class="card attendance-list-card">
+        <div class="section-heading">
+          <div>
+            <h2>Data Absensi Nadia Putri</h2>
+            <p>{{ namaBulan }}</p>
+          </div>
+
+          <span class="attendance-count">{{ riwayatAbsensiNadia.length }} data</span>
+        </div>
+
+        <div v-if="loading" class="empty-state">
+          Memuat riwayat absensi...
+        </div>
+
+        <div v-else-if="errorApi" class="empty-state error-state">
+          {{ errorApi }}
+          <button class="btn primary" @click="muatAbsensiBulan">Coba Lagi</button>
+        </div>
+
+        <div v-else-if="riwayatAbsensiNadia.length === 0" class="empty-state">
+          Belum ada catatan absensi Nadia Putri pada bulan ini.
+        </div>
+
+        <div v-else class="table-wrapper">
+          <table class="attendance-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Nama Siswa</th>
+                <th>Tanggal</th>
+                <th>Status</th>
+                <th>Catatan</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr
+                v-for="(siswa, index) in riwayatAbsensiNadia"
+                :key="`${siswa.id_absen || siswa.id_siswa || 'nadia'}-${siswa.tanggal}-${index}`"
+              >
+                <td>{{ index + 1 }}</td>
+                <td>{{ siswa.nama_siswa || siswa.nama || 'Nadia Putri' }}</td>
+                <td>
+                  {{
+                    new Date(`${String(siswa.tanggal || '').slice(0, 10)}T12:00:00`)
+                      .toLocaleDateString('id-ID', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })
+                  }}
+                </td>
+                <td>
+                  <span class="status-label" :class="String(siswa.status || '').toLowerCase()">
+                    {{ siswa.status || '-' }}
+                  </span>
+                </td>
+                <td>{{ siswa.catatan || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
 
     <div v-if="toast" class="toast">
       {{ toast }}
@@ -632,7 +457,6 @@ function unduhCSV() {
 </template>
 
 <style scoped>
-/* Kalender dan daftar absensi */
 .calendar-card,
 .attendance-list-card {
   margin-top: 22px;
@@ -720,7 +544,6 @@ function unduhCSV() {
   cursor: pointer;
 }
 
-/* Warna latar berdasarkan status absensi */
 .calendar-day.status-hadir {
   background: #e6f0ea;
   color: #39775d;
@@ -741,20 +564,17 @@ function unduhCSV() {
   color: #bd554e;
 }
 
-/* Tanggal yang dipilih tetap berwarna navy */
 .calendar-day.selected {
   background: var(--navy, #1e3a5f);
   color: white;
   border-color: var(--navy, #1e3a5f);
 }
 
-/* Hari ini tetap ditandai dengan border biru */
 .calendar-day.is-today:not(.selected) {
   border: 2px solid #2196e9;
   font-weight: 700;
 }
 
-/* Hari ini yang juga dipilih */
 .calendar-day.is-today.selected {
   border: 2px solid #2196e9;
 }
@@ -762,17 +582,6 @@ function unduhCSV() {
 .calendar-day:hover {
   border-color: #2196f3;
   box-shadow: 0 0 0 1px rgba(33, 150, 243, 0.12);
-}
-
-.calendar-day.selected {
-  background: var(--navy, #1e3a5f);
-  color: white;
-  border-color: var(--navy, #1e3a5f);
-} 
-
-.calendar-day.is-today:not(.selected) {
-  border: 2px solid #2196e9;
-  font-weight: 700;
 }
 
 .calendar-legend {
@@ -790,17 +599,37 @@ function unduhCSV() {
   gap: 7px;
 }
 
-.legend-dot,
+.legend-status,
 .legend-today {
   display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #4f8068;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend-status.hadir {
+  background: #e6f0ea;
+  border: 1px solid #39775d;
+}
+
+.legend-status.sakit {
+  background: #fbf0d8;
+  border: 1px solid #a96b00;
+}
+
+.legend-status.izin {
+  background: #e7edf5;
+  border: 1px solid #42678d;
+}
+
+.legend-status.alpha {
+  background: #f8e5e3;
+  border: 1px solid #bd554e;
 }
 
 .legend-today {
-  background: #2196e9;
+  background: white;
+  border: 2px solid #2196e9;
 }
 
 .attendance-count {
@@ -883,6 +712,17 @@ function unduhCSV() {
   color: #a33e38;
 }
 
+.btn-cetak,
+.btn-unduh {
+  cursor: pointer;
+}
+
+.btn-cetak:disabled,
+.btn-unduh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (max-width: 600px) {
   .calendar-card,
   .attendance-list-card {
@@ -908,4 +748,46 @@ function unduhCSV() {
   }
 }
 
+@media print {
+  :global(body) {
+    background: white !important;
+  }
+
+  :global(.sidebar),
+  :global(.page-head),
+  .calendar-card,
+  .toast {
+    display: none !important;
+  }
+
+  .app-shell,
+  .main {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .attendance-list-card {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .table-wrapper {
+    overflow: visible !important;
+  }
+
+  .attendance-table {
+    width: 100% !important;
+    font-size: 11px;
+  }
+
+  .attendance-table th,
+  .attendance-table td {
+    border: 1px solid #999 !important;
+    padding: 8px !important;
+  }
+}
 </style>
