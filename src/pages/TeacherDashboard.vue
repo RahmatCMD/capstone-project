@@ -174,6 +174,31 @@ const tanggalMemilikiAbsensi = computed(() => {
   )
 })
 
+// Status absensi yang tercatat pada setiap tanggal
+const statusAbsensiTanggal = computed(() => {
+  const hasil = {}
+
+  dataAbsensiBulan.value.forEach(item => {
+    const tanggal = String(item.tanggal || '').slice(0, 10)
+    const status = String(item.status || '').trim().toLowerCase()
+
+    if (!tanggal) return
+
+    if (!hasil[tanggal]) {
+      hasil[tanggal] = []
+    }
+
+    if (
+      ['hadir', 'sakit', 'izin', 'alpha'].includes(status) &&
+      !hasil[tanggal].includes(status)
+    ) {
+      hasil[tanggal].push(status)
+    }
+  })
+
+  return hasil
+})
+
 const statistikHariIni = computed(() => {
   const data = absensiHariIni.value
 
@@ -336,28 +361,22 @@ function show(message) {
         <div v-if="!tanggal" class="calendar-empty"></div>
 
         <button
-          v-else
-          class="calendar-day"
-          :class="{
+            v-else
+            class="calendar-day"
+            :class="[
+          {
             selected: tanggal === tanggalDipilih,
-            'has-attendance': tanggalMemilikiAbsensi.has(tanggal),
             'is-today': tanggal === tanggalSekarang()
-          }"
+          },
+            ...(statusAbsensiTanggal[tanggal] || []).map(
+            status => `status-${status}`
+          )
+        ]"
           @click="pilihTanggal(tanggal)"
-        >
+          >
           <span>{{ Number(tanggal.slice(-2)) }}</span>
-          <span
-            v-if="tanggalMemilikiAbsensi.has(tanggal)"
-            class="attendance-dot"
-            aria-label="Ada data absensi"
-          ></span>
-        </button>
+          </button>
       </template>
-    </div>
-
-    <div class="calendar-legend">
-      <span><i class="legend-dot"></i> Ada data absensi</span>
-      <span><i class="legend-today"></i> Hari ini</span>
     </div>
   </section>
 
@@ -521,31 +540,59 @@ function show(message) {
   cursor: pointer;
 }
 
-.calendar-day:hover {
-  border-color: var(--navy, #1e3a5f);
-  background: #eef5fc;
+/* Warna latar berdasarkan status absensi */
+.calendar-day.status-hadir {
+  background: #e6f0ea;
+  color: #39775d;
 }
 
+.calendar-day.status-sakit {
+  background: #fbf0d8;
+  color: #a96b00;
+}
+
+.calendar-day.status-izin {
+  background: #e7edf5;
+  color: #42678d;
+}
+
+.calendar-day.status-alpha {
+  background: #f8e5e3;
+  color: #bd554e;
+}
+
+/* Tanggal yang dipilih tetap berwarna navy */
 .calendar-day.selected {
   background: var(--navy, #1e3a5f);
   color: white;
   border-color: var(--navy, #1e3a5f);
 }
 
+/* Hari ini tetap ditandai dengan border biru */
 .calendar-day.is-today:not(.selected) {
   border: 2px solid #2196e9;
   font-weight: 700;
 }
 
-.attendance-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #4f8068;
+/* Hari ini yang juga dipilih */
+.calendar-day.is-today.selected {
+  border: 2px solid #2196e9;
 }
 
-.calendar-day.selected .attendance-dot {
-  background: #f59e0b;
+.calendar-day:hover {
+  border-color: #2196f3;
+  box-shadow: 0 0 0 1px rgba(33, 150, 243, 0.12);
+}
+
+.calendar-day.selected {
+  background: var(--navy, #1e3a5f);
+  color: white;
+  border-color: var(--navy, #1e3a5f);
+} 
+
+.calendar-day.is-today:not(.selected) {
+  border: 2px solid #2196e9;
+  font-weight: 700;
 }
 
 .calendar-legend {

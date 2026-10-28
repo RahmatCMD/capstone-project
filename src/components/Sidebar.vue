@@ -40,13 +40,11 @@ const menus = computed(() => props.role === 'guru'
       { label: 'Dashboard', to: '/guru/dashboard' },
       { label: 'Input Absensi', to: '/guru/absensi' },
       { label: 'Riwayat & Rekap', to: '/guru/riwayat' },
-      { label: 'Nilai & Tugas', to: '/guru/nilai-tugas' },
       { label: 'Kelas Saya', to: '/guru/kelas-saya' }
     ]
   : [
       { label: 'Dashboard', to: '/orang-tua/dashboard' },
       { label: 'Absensi Anak', to: '/orang-tua/absensi' },
-      { label: 'Kemajuan Belajar', to: '/orang-tua/kemajuansiswa' },
     ])
 
 const profilMenus = computed(() => {

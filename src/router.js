@@ -51,11 +51,6 @@ const router = createRouter({
       meta: { role: 'guru' }
     },
     {
-      path: '/guru/nilai-tugas',
-      component: NilaiTugas,
-      meta: { role: 'guru' }
-    },
-    {
       path: '/guru/tentang-kami',
       component: TentangKami,
       meta: { role: 'guru' }
@@ -90,11 +85,6 @@ const router = createRouter({
     {
       path: '/orang-tua/pengumuman',
       component: Pengumuman,
-      meta: { role: 'orang-tua' }
-    },
-    {
-      path: '/orang-tua/kemajuansiswa',
-      component: KemajuanBelajar,
       meta: { role: 'orang-tua' }
     },
     {
