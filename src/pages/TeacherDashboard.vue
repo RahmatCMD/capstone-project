@@ -7,7 +7,7 @@ const router = useRouter()
 const toast = ref('')
 
 // API PHP
-const ABSEN_API_URL = 'http://localhost/absensi-api/absen.php'
+const ABSEN_API_URL = 'https://portalabsensi.free.nf/absen.php'
 
 // ================================
 // TANGGAL DAN KALENDER
