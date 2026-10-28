@@ -232,6 +232,7 @@ const riwayatAbsensiNadia = computed(() => {
     )
   )
 })
+<<<<<<< HEAD
 
 // Status absensi yang tercatat pada setiap tanggal
 const statusAbsensiTanggal = computed(() => {
@@ -301,6 +302,67 @@ function cetakAbsensi() {
   }
 
   window.print()
+=======
+
+// Status absensi yang tercatat pada setiap tanggal
+const statusAbsensiTanggal = computed(() => {
+  const hasil = {}
+
+  absensiNadia.value.forEach(item => {
+    const tanggal = String(item.tanggal || '').slice(0, 10)
+    const status = String(item.status || '').trim().toLowerCase()
+
+    if (!tanggal) return
+
+    if (!hasil[tanggal]) {
+      hasil[tanggal] = []
+    }
+
+    if (
+      ['hadir', 'sakit', 'izin', 'alpha'].includes(status) &&
+      !hasil[tanggal].includes(status)
+    ) {
+      hasil[tanggal].push(status)
+    }
+  })
+
+  return hasil
+})
+
+const tanggalDipilihFormat = computed(() =>
+  new Date(`${tanggalDipilih.value}T12:00:00`).toLocaleDateString(
+    'id-ID',
+    {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }
+  )
+)
+
+// ================================
+// SIKLUS HALAMAN
+// ================================
+onMounted(() => {
+  muatAbsensiBulan()
+  window.addEventListener('focus', muatAbsensiBulan)
+})
+
+onActivated(() => {
+  muatAbsensiBulan()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('focus', muatAbsensiBulan)
+})
+
+function show(message) {
+  toast.value = message
+  setTimeout(() => {
+    toast.value = ''
+  }, 2200)
+>>>>>>> 27d2e2232c5995ca2aafad46d33b3146fb047817
 }
 
 // ================================
@@ -386,6 +448,7 @@ function unduhCSV() {
     </div>
 
     <div class="actions">
+<<<<<<< HEAD
         <button class="btn">
           {{ currentDate }}
         </button>
@@ -404,6 +467,14 @@ function unduhCSV() {
     :disabled="loading || !!errorApi || riwayatAbsensiNadia.length === 0"
       >
       Unduh CSV
+=======
+      <button class="btn">{{ currentDate }}</button>
+      <button
+        class="btn primary"
+        @click="router.push('/guru/absensi')"
+      >
+        + Input Absensi Hari Ini
+>>>>>>> 27d2e2232c5995ca2aafad46d33b3146fb047817
       </button>
     </div>
   </div>
