@@ -2,6 +2,10 @@
 import { ref, onMounted } from 'vue'
 import Sidebar from '../components/Sidebar.vue'
 
+// Alamat PHP API
+const API_URL =
+'https://portalabsensi.free.nf/siswa.php'
+
 const students = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -69,10 +73,6 @@ const addStudent = async () => {
     saving.value = false
   }
 }
-
-// Alamat PHP API
-const API_URL =
-'https://portalabsensi.free.nf/siswa.php'
 
 // Mengambil data dari MySQL melalui PHP
 const getStudents = async () => {
