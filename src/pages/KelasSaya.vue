@@ -72,7 +72,7 @@ const addStudent = async () => {
 
 // Alamat PHP API
 const API_URL =
-'http://localhost/absensi-api/siswa.php'
+'https://portalabsensi.free.nf/siswa.php'
 
 // Mengambil data dari MySQL melalui PHP
 const getStudents = async () => {
