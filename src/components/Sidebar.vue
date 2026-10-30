@@ -37,7 +37,7 @@ watch(
 
 const menus = computed(() => props.role === 'guru'
   ? [
-      { label: 'Dashboard', to: '/guru/dashboard' },
+      { label: 'Dashboard', to: '/guru/dashboard', },
       { label: 'Input Absensi', to: '/guru/absensi' },
       { label: 'Riwayat & Rekap', to: '/guru/riwayat' },
       { label: 'Kelas Saya', to: '/guru/kelas-saya' }
@@ -111,7 +111,7 @@ function logout() {
       <div>
         <div>Absen Sekolah</div>
         <span class="brand-sub">
-          Sistem Absensi & Pemantauan Belajar
+          Sistem dan Pemantauan absensi siswa
         </span>
       </div>
     </div>
@@ -122,9 +122,9 @@ function logout() {
 
     <nav>
       <router-link
-        v-for="item in menus"
-        :key="item.label"
-        :to="item.to"
+          v-for="item in menus"
+          :key="item.label"
+          :to="item.to"
         class="nav-link"
         :class="{ active: route.path === item.to }"
         @click="tutupMenu"

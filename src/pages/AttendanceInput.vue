@@ -412,7 +412,7 @@ onMounted(() => {
       >
         Menampilkan {{ visible.length }}
         dari {{ students.length }} siswa.
-        Data absensi disimpan ke database MySQL berdasarkan tanggal.
+        Data absensi akan ditampilkan dan masuk riwayat berdasarkan tanggal
       </p>
 
     </main>

@@ -328,7 +328,7 @@ function unduhCSV() {
             @click="unduhCSV"
             :disabled="loading || !!errorApi || riwayatAbsensiNadia.length === 0"
           >
-            Unduh CSV
+            Unduh absensi
           </button>
         </div>
       </div>
@@ -381,7 +381,6 @@ function unduhCSV() {
           <span><i class="legend-status sakit"></i> Sakit</span>
           <span><i class="legend-status izin"></i> Izin</span>
           <span><i class="legend-status alpha"></i> Alpha</span>
-          <span><i class="legend-today"></i> Hari ini</span>
         </div>
       </section>
 

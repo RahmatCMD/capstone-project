@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar.vue'
 
 // Alamat PHP API
 const API_URL =
-'https://portalabsensi.free.nf/siswa.php'
+'http://localhost/absensi-api/siswa.php'
 
 const students = ref([])
 const loading = ref(false)
@@ -141,13 +141,6 @@ onMounted(() => {
         <div class="info-card">
           <span class="info-label">Jumlah Siswa</span>
           <strong>{{ students.length }} Siswa</strong>
-        </div>
-
-        <div class="info-card">
-          <span class="info-label">Status Database</span>
-          <strong :class="dbConnected ? 'online' : 'offline'">
-            {{ dbConnected ? 'Terhubung' : 'Tidak terhubung' }}
-          </strong>
         </div>
       </div>
 

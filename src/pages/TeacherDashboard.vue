@@ -261,7 +261,6 @@ function show(message) {
 <template>
   <div class="app-shell">
     <Sidebar role="guru" />
-
     
 <main class="main">
   <div class="page-head">
